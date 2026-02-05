@@ -18,6 +18,8 @@ type configFile struct {
 	Profiles map[string]Profile `toml:"profiles" mapstructure:"profiles"`
 }
 
+// ReadProfile gets profile from config file, then parses
+// it into config options supported by kgo clients.
 func ReadProfile(profile string) ([]kgo.Opt, error) {
 	configFile, err := readConfigFile() // Load ~/.frogo/config.toml
 	if err != nil {
