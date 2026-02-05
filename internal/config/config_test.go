@@ -48,7 +48,7 @@ func TestReadConfigFile_Missing(t *testing.T) {
 		t.Fatalf("expected no error for missing config, got: %v", err)
 	}
 
-	if len(config.profiles) != 0 {
-		t.Errorf("expected empty config, got %d profiles", len(config.profiles))
+	if len(config.Profiles) != 0 {
+		t.Errorf("expected empty config, got %d profiles", len(config.Profiles))
 	}
 }

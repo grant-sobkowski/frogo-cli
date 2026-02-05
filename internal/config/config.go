@@ -15,7 +15,7 @@ type Profile struct {
 }
 
 type configFile struct {
-	profiles map[string]Profile `toml:"profiles" mapstructure:"profiles"`
+	Profiles map[string]Profile `toml:"profiles" mapstructure:"profiles"`
 }
 
 func ReadProfile(profile string) ([]kgo.Opt, error) {
@@ -24,7 +24,7 @@ func ReadProfile(profile string) ([]kgo.Opt, error) {
 		panic(err)
 	}
 
-	configProfile, exists := configFile.profiles[profile] // Access profile
+	configProfile, exists := configFile.Profiles[profile] // Access profile
 	if !exists {
 		return nil, fmt.Errorf("profile %v not found. Config file: %v", profile, configFile)
 	}
@@ -45,12 +45,12 @@ func WriteProfile(p Profile) error {
 	}
 
 	// Ensure Profiles map is initialized
-	if cfg.profiles == nil {
-		cfg.profiles = make(map[string]Profile)
+	if cfg.Profiles == nil {
+		cfg.Profiles = make(map[string]Profile)
 	}
 
 	// Set the profile name and add/update it
-	cfg.profiles[p.Name] = p
+	cfg.Profiles[p.Name] = p
 
 	// Write config using Viper
 	return writeConfigFile(*cfg)
@@ -95,7 +95,7 @@ func readConfigFile() (*configFile, error) {
 	// TODO: Make passing in arbitrary kgo options easier
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			return &configFile{profiles: make(map[string]Profile)}, nil
+			return &configFile{Profiles: make(map[string]Profile)}, nil
 		}
 		return nil, fmt.Errorf("failed to read config file: %w", err)
 	}
@@ -106,9 +106,9 @@ func readConfigFile() (*configFile, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
-	for name, profile := range config.profiles {
+	for name, profile := range config.Profiles {
 		profile.Name = name
-		config.profiles[name] = profile
+		config.Profiles[name] = profile
 	}
 
 	return &config, nil
@@ -129,7 +129,7 @@ func writeConfigFile(cfg configFile) error {
 	v.SetConfigName("config")
 	v.SetConfigType("toml")
 	v.AddConfigPath(configDir)
-	v.Set("profiles", cfg.profiles)
+	v.Set("profiles", cfg.Profiles)
 
 	configPath, err := Path()
 	if err != nil {

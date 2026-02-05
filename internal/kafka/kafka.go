@@ -9,32 +9,32 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-// startHook represents an offsetLike struct. When get is run,
-// offset() is called, resolving the offsetLike to a kgo.Offset
+// resolvable represents an implementation of an offset type,
+// which can be resolved at runtime.
 // NOTE: kgo.Offset supports absolute, relative, and timestamp based input.
 // See: https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#Offset
-type startHook interface {
-	offset() kgo.Offset
+type offsetResolver interface {
+	offsetResolve() kgo.Offset
 }
 
 // stopHook is called on each processed record in Get. If true,
 // Get stops processing the owning partition of the record
-type stopHook interface {
-	check(kgo.Record) bool
+type stopChecker interface {
+	stopCheck(kgo.Record) bool
 }
 
-// absoluteOffset represents any positive topic offset.
-type absoluteOffset struct {
-	absOffset int64
+// absolute represents any positive topic offset.
+type absolute struct {
+	offset int64
 }
 
 // returns kgo offset directly mapping to input offset
-func (o *absoluteOffset) offset() kgo.Offset {
-	usable := kgo.NewOffset().At(o.absOffset)
-	return usable
+func (abs *absolute) offsetResolve() kgo.Offset {
+	offset := kgo.NewOffset().At(abs.offset)
+	return offset
 }
 
-func Get(cl *kgo.Client, topic string, start startHook, stop stopHook) ([]kgo.Record, error) {
+func Get(cl *kgo.Client, topic string, start offsetResolver, stopper stopChecker) ([]kgo.Record, error) {
 	records := []kgo.Record{}
 
 	metadata, err := clusterMetadata(cl, topic)
@@ -42,8 +42,8 @@ func Get(cl *kgo.Client, topic string, start startHook, stop stopHook) ([]kgo.Re
 		return nil, err
 	}
 
-	startOffset := start.offset() // resolve start hook
-	startOffsets := partitionOffsets(metadata.Topics[topic], startOffset)
+	topicStart := start.offsetResolve() // resolve start hook
+	_ = partitionOffsets(metadata.Topics[topic], topicStart)
 
 	// TODO: Consume using record iterator, update partition status using stop hook
 
@@ -51,12 +51,12 @@ func Get(cl *kgo.Client, topic string, start startHook, stop stopHook) ([]kgo.Re
 }
 
 // partitionOffsets formats an offset for kgo.Client.AddConsumePartitions
-func partitionOffsets(topicDetail kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
+func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
 
 	offsets := make(map[string]map[int32]kgo.Offset)
-	topic := topicDetail.Topic
+	topic := td.Topic
 
-	for id := range topicDetail.Partitions {
+	for id := range td.Partitions {
 		offsets[topic][id] = at
 	}
 
