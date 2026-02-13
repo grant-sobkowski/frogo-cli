@@ -10,12 +10,13 @@ import (
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-// resolvable represents an implementation of an offset type,
-// which can be resolved at runtime.
+// offsetResolver represents an offsetLike implementation, which can be
+// called at consume-time with cluster metadata to get kgo partition offsets
+// for setting consume start point.
 // NOTE: kgo.Offset supports absolute, relative, and timestamp based input.
 // See: https://pkg.go.dev/github.com/twmb/franz-go/pkg/kgo#Offset
 type offsetResolver interface {
-	offsetResolve() kgo.Offset
+	offsetResolve(td kadm.TopicDetail) map[string]map[int32]kgo.Offset
 }
 
 // stopHook is called on each processed record in Get. If true,
@@ -24,30 +25,46 @@ type stopChecker interface {
 	stopCheck(*kgo.Record) bool
 }
 
+// partitionOffsets formats `at` offset as a map of partition offsets
+func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
+
+	offsets := make(map[string]map[int32]kgo.Offset)
+	offsets[td.Topic] = make(map[int32]kgo.Offset)
+
+	for id := range td.Partitions {
+		offsets[td.Topic][id] = at
+	}
+
+	return offsets
+}
+
 // absolute represents any positive topic offset.
 type absolute struct {
 	offset int64
 }
 
-func (abs *absolute) offsetResolve() kgo.Offset {
+// TODO: Add unit test for this using mocked kadm.TopicDetail
+func (abs *absolute) offsetResolve(td kadm.TopicDetail) map[string]map[int32]kgo.Offset {
 	offset := kgo.NewOffset().At(abs.offset)
-	return offset
+	byPartition := partitionOffsets(td, offset)
+	return byPartition
 }
 
 // Get resolves starting and stopping points and returns consumed messages.
 func Get(cl *kgo.Client, topic string, start offsetResolver, stopper stopChecker) ([]*kgo.Record, error) {
-	meta, err := clusterMetadata(cl, topic)
-	if err != nil {
-		return nil, err
-	}
-
-	offset := start.offsetResolve()
-	pStarts := partitionOffsets(meta.Topics[topic], offset)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	cl.AddConsumePartitions(pStarts)
+	// clusterMetadata() does additional verification to check
+	// our desired topic exists in the meta response
+	meta, err := clusterMetadata(cl, topic)
+	if err != nil {
+		return nil, err
+	}
+	startOffsets := start.offsetResolve(meta.Topics[topic])
+	cl.AddConsumePartitions(startOffsets)
+
 	records := []*kgo.Record{}
 	completedPartitions := []int32{}
 
@@ -74,26 +91,12 @@ func Get(cl *kgo.Client, topic string, start offsetResolver, stopper stopChecker
 			return records, nil
 		}
 
-		// Check if context is done
 		select {
 		case <-ctx.Done():
 			return records, ctx.Err()
 		default:
 		}
 	}
-}
-
-// partitionOffsets formats `at` offset as a map of partition offsets
-func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
-
-	offsets := make(map[string]map[int32]kgo.Offset)
-	offsets[td.Topic] = make(map[int32]kgo.Offset)
-
-	for id := range td.Partitions {
-		offsets[td.Topic][id] = at
-	}
-
-	return offsets
 }
 
 func clusterMetadata(cl *kgo.Client, topic string) (*kadm.Metadata, error) {
