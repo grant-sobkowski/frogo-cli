@@ -47,7 +47,7 @@ func TestOnStartStrict(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			abs := NewStrictOffset(tt.offset)
+			abs := &StrictOffset{Offset: tt.offset}
 			td := mockTopicDetail(tt.topic, tt.partitions)
 			state := GetState{completedPartitions: []int32{}, topicMeta: &td}
 
@@ -110,7 +110,7 @@ func TestOnRecordStrict(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			abs := NewStrictOffset(tt.stopOffset)
+			abs := &StrictOffset{Offset: tt.stopOffset}
 			td := mockTopicDetail("test-topic", []int32{0})
 			state := GetState{completedPartitions: []int32{}, topicMeta: &td}
 			record := kgo.Record{Offset: tt.recordOffset}

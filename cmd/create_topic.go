@@ -1,0 +1,52 @@
+package cmd
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/grant-sobkowski/frogo-cli/internal/config"
+	"github.com/spf13/cobra"
+	"github.com/twmb/franz-go/pkg/kadm"
+)
+
+var partitions int32
+
+var createTopicCmd = &cobra.Command{
+	Use:   "create-topic <topic>",
+	Short: "Create a Kafka topic",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runCreateTopic,
+}
+
+func init() {
+	createTopicCmd.Flags().Int32Var(&partitions, "partitions", 1, "number of partitions")
+	rootCmd.AddCommand(createTopicCmd)
+}
+
+func runCreateTopic(cmd *cobra.Command, args []string) error {
+	topic := args[0]
+
+	cl, err := config.Client(profile)
+	if err != nil {
+		return err
+	}
+	defer cl.Close()
+
+	adminClient := kadm.NewClient(cl)
+	defer adminClient.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	resp, err := adminClient.CreateTopic(ctx, partitions, -1, nil, topic)
+	if err != nil {
+		return fmt.Errorf("failed to create topic: %w", err)
+	}
+	if resp.Err != nil {
+		return fmt.Errorf("failed to create topic: %w", resp.Err)
+	}
+
+	fmt.Printf("created topic %q with %d partitions\n", topic, partitions)
+	return nil
+}

@@ -33,7 +33,7 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 
 	startOffsets, err := onStart(state)
 	if err != nil {
-		//TODO
+		return nil, fmt.Errorf("onStart hook failed: %w", err)
 	}
 	// onStart can specify a nil value to indicate that no consumption is needed
 	if startOffsets == nil {
@@ -50,10 +50,14 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		fetches := cl.PollFetches(ctx)
 		err := fetches.Err()
 		if err != nil {
-			return nil, fmt.Errorf("error while polling fetches: %w", err)
+			return nil, fmt.Errorf("failed to poll fetches: %w", err)
 		}
 
+		var hookErr error
 		fetches.EachRecord(func(r *kgo.Record) {
+			if hookErr != nil {
+				return
+			}
 			// skip records from completed partitions
 			if slices.Contains(state.completedPartitions, r.Partition) {
 				return
@@ -61,15 +65,19 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 			// call onRecord hook
 			stop, err := onRecord(*r, state)
 			if err != nil {
-				//TODO
+				hookErr = fmt.Errorf("onRecord hook failed: %w", err)
+				return
 			}
 			// onRecord hook has deemed this partition complete
-			if stop == true {
+			if stop {
 				state.completedPartitions = append(state.completedPartitions, r.Partition)
 				return
 			}
 			records = append(records, r)
 		})
+		if hookErr != nil {
+			return nil, hookErr
+		}
 
 		// Consumption stops once all partitions are marked 'complete' by our onRecord hook.
 		// This requires at least one record to be processed from each partition in the topic.
@@ -90,7 +98,6 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 // topicMetadata retrieves cluster metadata and checks topic is defined
 func topicMetadata(cl *kgo.Client, topic string) (*kadm.TopicDetail, error) {
 	adminClient := kadm.NewClient(cl)
-	defer adminClient.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()

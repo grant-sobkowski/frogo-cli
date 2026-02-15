@@ -18,23 +18,19 @@ type OnRecordHook func(record kgo.Record, state GetState) (bool, error)
 //  ──────────────────────────── STRICT OFFSET ────────────────────────────
 
 type StrictOffset struct {
-	offset int64
-}
-
-func NewStrictOffset(offset int64) *StrictOffset {
-	return &StrictOffset{offset: offset}
+	Offset int64
 }
 
 func OnStartStrict(abs *StrictOffset) OnStartHook {
 	return func(state GetState) (map[string]map[int32]kgo.Offset, error) {
-		offset := kgo.NewOffset().At(abs.offset)
+		offset := kgo.NewOffset().At(abs.Offset)
 		return partitionOffsets(*state.topicMeta, offset), nil
 	}
 }
 
 func OnRecordStrict(abs *StrictOffset) OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
-		return record.Offset >= abs.offset, nil
+		return record.Offset >= abs.Offset, nil
 	}
 }
 

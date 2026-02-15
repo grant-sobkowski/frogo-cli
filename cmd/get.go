@@ -59,32 +59,6 @@ func runGet(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// ──────────────────────────── IOTA TYPES ────────────────────────────
-
-type fromType int
-
-const (
-	strictFrom fromType = iota
-)
-
-type toType int
-
-const (
-	strictTo toType = iota
-)
-
-// ──────────────────────────── FROM / TO ARG INTERFACES ──────────────
-
-type fromArg interface {
-	validate(offsetLike string) error
-	parse(offsetLike string) kafka.OnStartHook
-}
-
-type toArg interface {
-	validate(offsetLike string) error
-	parse(offsetLike string) kafka.OnRecordHook
-}
-
 // ──────────────────────────── PARSING ────────────────────────────
 
 func parseTypeValueFormat(s string) (string, string, error) {
@@ -95,40 +69,22 @@ func parseTypeValueFormat(s string) (string, string, error) {
 	return parts[0], parts[1], nil
 }
 
-func newFromArg(typ string) (fromArg, error) {
-	switch typ {
-	case "offset":
-		return &fromStrictOffset{}, nil
-	default:
-		return nil, fmt.Errorf("unsupported from type %q (supported: offset)", typ)
-	}
-}
-
-func newToArg(typ string) (toArg, error) {
-	switch typ {
-	case "offset":
-		return &toStrictOffset{}, nil
-	default:
-		return nil, fmt.Errorf("unsupported to type %q (supported: offset)", typ)
-	}
-}
-
 func parseFromArg(from string) (kafka.OnStartHook, error) {
 	typ, value, err := parseTypeValueFormat(from)
 	if err != nil {
 		return nil, fmt.Errorf("invalid --from: %w", err)
 	}
 
-	arg, err := newFromArg(typ)
-	if err != nil {
-		return nil, err
+	switch typ {
+	case "offset":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --from: invalid offset value %q: %w", value, err)
+		}
+		return kafka.OnStartStrict(&kafka.StrictOffset{Offset: v}), nil
+	default:
+		return nil, fmt.Errorf("unsupported from type %q (supported: offset)", typ)
 	}
-
-	if err := arg.validate(value); err != nil {
-		return nil, fmt.Errorf("invalid --from: %w", err)
-	}
-
-	return arg.parse(value), nil
 }
 
 func parseToArg(to string) (kafka.OnRecordHook, error) {
@@ -137,48 +93,16 @@ func parseToArg(to string) (kafka.OnRecordHook, error) {
 		return nil, fmt.Errorf("invalid --to: %w", err)
 	}
 
-	arg, err := newToArg(typ)
-	if err != nil {
-		return nil, err
+	switch typ {
+	case "offset":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --to: invalid offset value %q: %w", value, err)
+		}
+		return kafka.OnRecordStrict(&kafka.StrictOffset{Offset: v}), nil
+	default:
+		return nil, fmt.Errorf("unsupported to type %q (supported: offset)", typ)
 	}
-
-	if err := arg.validate(value); err != nil {
-		return nil, fmt.Errorf("invalid --to: %w", err)
-	}
-
-	return arg.parse(value), nil
-}
-
-// ──────────────────────────── STRICT OFFSET ─────────────────────────
-
-type fromStrictOffset struct{}
-
-func (s *fromStrictOffset) validate(offsetLike string) error {
-	_, err := strconv.ParseInt(offsetLike, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid offset value %q: %w", offsetLike, err)
-	}
-	return nil
-}
-
-func (s *fromStrictOffset) parse(offsetLike string) kafka.OnStartHook {
-	v, _ := strconv.ParseInt(offsetLike, 10, 64)
-	return kafka.OnStartStrict(kafka.NewStrictOffset(v))
-}
-
-type toStrictOffset struct{}
-
-func (s *toStrictOffset) validate(offsetLike string) error {
-	_, err := strconv.ParseInt(offsetLike, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid offset value %q: %w", offsetLike, err)
-	}
-	return nil
-}
-
-func (s *toStrictOffset) parse(offsetLike string) kafka.OnRecordHook {
-	v, _ := strconv.ParseInt(offsetLike, 10, 64)
-	return kafka.OnRecordStrict(kafka.NewStrictOffset(v))
 }
 
 // ──────────────────────────── OUTPUT ────────────────────────────
