@@ -1,15 +1,13 @@
-package kafka
+package config
 
 import (
 	"fmt"
 
-	"github.com/grant-sobkowski/frogo-cli/internal/config"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-func client(profile string) (*kgo.Client, error) {
-
-	opts, err := config.ReadProfile(profile)
+func Client(profile string) (*kgo.Client, error) {
+	opts, err := ReadProfile(profile)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read profile for client config: %w", err)
 	}
