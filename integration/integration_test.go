@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/grant-sobkowski/frogo-cli/cmd"
 	"github.com/twmb/franz-go/pkg/kfake"
@@ -213,5 +215,27 @@ func TestIntegration_GetFromOffsetToOffset(t *testing.T) {
 	// Verify offset 0 message is NOT included
 	if strings.Contains(out, "msg-zero") {
 		t.Errorf("should not contain msg-zero when starting from offset/1, got: %s", out)
+	}
+}
+
+func TestIntegration_GetUnixTimestamp(t *testing.T) {
+	topic := "test-get-unix"
+	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+
+	// Use offset for --from (kfake may not support AfterMilli seeking),
+	// and a future unix timestamp for --to so all records are before the cutoff
+	future := strconv.FormatInt(time.Now().Add(1*time.Minute).Unix(), 10)
+	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "unix/"+future, "--profile", "test")
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
+	}
+
+	if !strings.Contains(out, "msg-zero") {
+		t.Errorf("expected 'msg-zero' in get output, got: %s", out)
+	}
+	if !strings.Contains(out, "msg-four") {
+		t.Errorf("expected 'msg-four' in get output, got: %s", out)
 	}
 }

@@ -34,6 +34,25 @@ func OnRecordStrict(abs *StrictOffset) OnRecordHook {
 	}
 }
 
+//  ──────────────────────────── UNIX MILLIS OFFSET ────────────────────────────
+
+type UnixMillisOffset struct {
+	Millis int64
+}
+
+func OnStartUnixMillis(um *UnixMillisOffset) OnStartHook {
+	return func(state GetState) (map[string]map[int32]kgo.Offset, error) {
+		offset := kgo.NewOffset().AfterMilli(um.Millis)
+		return partitionOffsets(*state.topicMeta, offset), nil
+	}
+}
+
+func OnRecordUnixMillis(um *UnixMillisOffset) OnRecordHook {
+	return func(record kgo.Record, state GetState) (bool, error) {
+		return record.Timestamp.UnixMilli() >= um.Millis, nil
+	}
+}
+
 // partitionOffsets formats `at` offset as a map of partition offsets
 func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
 
