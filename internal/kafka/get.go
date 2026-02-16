@@ -12,12 +12,16 @@ import (
 
 // GetState holds information about the status of the topic consumer.
 type GetState struct {
-	completedPartitions []int32
+	completedPartitions []int32              // holds IDs of partitions deemed completed by onRecord hook
+	lastProcessed       map[int32]kgo.Record // holds offsets of processed records, by partition ID
 	topicMeta           *kadm.TopicDetail
 }
 
-// Consume a given topic using hooks
-func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHook) ([]*kgo.Record, error) {
+// Consume a given topic using hooks.
+// stopOnHighWatermark, when set, will stop processing records when the offsets
+// of the last known high watermark have been reached. For infrequently updated topics
+// this prevents waiting for conditions that have already been met.
+func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHook, stopOnHighWatermark bool) ([]*kgo.Record, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -28,7 +32,15 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		return nil, err
 	}
 
-	state := GetState{completedPartitions: []int32{}, topicMeta: topicMeta}
+	var highWatermarks *map[int32]kadm.ListedOffset
+	if stopOnHighWatermark {
+		highWatermarks, err = topicHighWatermarks(cl, topicMeta)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get high watermarks: %w", err)
+		}
+	}
+
+	state := GetState{completedPartitions: []int32{}, lastProcessed: make(map[int32]kgo.Record), topicMeta: topicMeta}
 	records := []*kgo.Record{}
 
 	startOffsets, err := onStart(state)
@@ -55,6 +67,7 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 
 		var hookErr error
 		fetches.EachRecord(func(r *kgo.Record) {
+			state.lastProcessed[r.Partition] = *r
 			if hookErr != nil {
 				return
 			}
@@ -84,6 +97,10 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		// For cases where some partitions sit stale, the onStart hook should set starting
 		// offsets accordingly to prevent unnecessary waiting / timeouts
 		if len(state.completedPartitions) == len(topicMeta.Partitions.Numbers()) {
+			return records, nil
+		}
+
+		if stopOnHighWatermark && isPastHighWatermark(*highWatermarks, state.lastProcessed) {
 			return records, nil
 		}
 
@@ -121,4 +138,52 @@ func topicMetadata(cl *kgo.Client, topic string) (*kadm.TopicDetail, error) {
 	topicMetadata := metadata.Topics[topic]
 
 	return &topicMetadata, nil
+}
+
+// topicHighWatermarks retrieves the highest existing offset for each topic partition
+func topicHighWatermarks(cl *kgo.Client, td *kadm.TopicDetail) (*map[int32]kadm.ListedOffset, error) {
+	adminClient := kadm.NewClient(cl)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	listedOffsets, err := adminClient.ListEndOffsets(ctx, td.Topic)
+	if err != nil {
+		return nil, err
+	}
+
+	err = listedOffsets.Error()
+	if err != nil {
+		return nil, fmt.Errorf("found error in list offsets response: %w", err)
+	}
+
+	watermarks, ok := listedOffsets[td.Topic]
+	if !ok {
+		return nil, fmt.Errorf("Topic %v not found in list offsets response", td.Topic)
+	}
+
+	return &watermarks, nil
+}
+
+// isPastHighWatermark returns true if every partition in the high watermark map
+// has a lastProcessed record at or past its high watermark offset.
+// High watermark is the offset of the next message to be written, so offset >= hwm-1
+// means all existing messages have been consumed.
+func isPastHighWatermark(highWatermarks map[int32]kadm.ListedOffset, lastProcessed map[int32]kgo.Record) bool {
+	for partition, listed := range highWatermarks {
+		// Empty partition (hwm 0) — nothing to consume, skip
+		if listed.Offset == 0 {
+			continue
+		}
+		record, ok := lastProcessed[partition]
+		if !ok {
+			return false
+		}
+		// High watermark is the next offset to be written,
+		// so the last existing record is at hwm-1
+		if record.Offset < listed.Offset-1 {
+			return false
+		}
+	}
+	return true
 }

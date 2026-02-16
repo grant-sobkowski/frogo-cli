@@ -128,13 +128,17 @@ func TestIntegration_PutUTF8(t *testing.T) {
 	path := filepath.Join(fixturesDir(), "put-utf8.txt")
 	runCmd(t, "put", topic, "--file", path, "--format", "utf8", "--profile", "test")
 
-	// --to offset/4 stops when it sees offset 4, returning offsets 0-3
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/4", "--profile", "test")
+	// --to well past end; high watermark check stops consumption after all 5 messages
+	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
+	}
 	if !strings.Contains(out, "hello world") {
 		t.Errorf("expected 'hello world' in get output, got: %s", out)
 	}
-	if !strings.Contains(out, "line four") {
-		t.Errorf("expected 'line four' in get output, got: %s", out)
+	if !strings.Contains(out, "line five") {
+		t.Errorf("expected 'line five' in get output, got: %s", out)
 	}
 }
 
@@ -148,13 +152,17 @@ func TestIntegration_PutBase64(t *testing.T) {
 	path := filepath.Join(fixturesDir(), "put-base64.txt")
 	runCmd(t, "put", topic, "--file", path, "--format", "base64", "--profile", "test")
 
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/4", "--profile", "test")
+	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
 	// base64 decoded values
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
+	}
 	if !strings.Contains(out, "hello world") {
 		t.Errorf("expected decoded 'hello world' in get output, got: %s", out)
 	}
-	if !strings.Contains(out, "line four") {
-		t.Errorf("expected decoded 'line four' in get output, got: %s", out)
+	if !strings.Contains(out, "line five") {
+		t.Errorf("expected decoded 'line five' in get output, got: %s", out)
 	}
 }
 
@@ -168,7 +176,11 @@ func TestIntegration_PutRecordJSON(t *testing.T) {
 	path := filepath.Join(fixturesDir(), "put-record-json.txt")
 	runCmd(t, "put", topic, "--file", path, "--format", "record-json", "--profile", "test")
 
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/4", "--profile", "test")
+	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
+	}
 	if !strings.Contains(out, "hello world") {
 		t.Errorf("expected 'hello world' in get output, got: %s", out)
 	}
@@ -183,15 +195,15 @@ func TestIntegration_GetFromOffsetToOffset(t *testing.T) {
 	topic := "test-get-offsets"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
-	// --to offset/3 stops when it sees offset 3, returning offsets 1-2
-	out := runCmd(t, "get", topic, "--from", "offset/1", "--to", "offset/3", "--profile", "test")
+	// --to well past end; high watermark stops consumption after offsets 1-4
+	out := runCmd(t, "get", topic, "--from", "offset/1", "--to", "offset/99", "--profile", "test")
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
-	if len(lines) != 2 {
-		t.Fatalf("expected 2 lines, got %d: %s", len(lines), out)
+	if len(lines) != 4 {
+		t.Fatalf("expected 4 lines, got %d: %s", len(lines), out)
 	}
 
-	expected := []string{"msg-one", "msg-two"}
+	expected := []string{"msg-one", "msg-two", "msg-three", "msg-four"}
 	for i, exp := range expected {
 		if !strings.Contains(lines[i], exp) {
 			t.Errorf("line %d: expected to contain %q, got %q", i, exp, lines[i])

@@ -15,6 +15,7 @@ import (
 
 var from string
 var to string
+var wait bool
 
 var getCmd = &cobra.Command{
 	Use:   "get <topic>",
@@ -26,6 +27,7 @@ var getCmd = &cobra.Command{
 func init() {
 	getCmd.Flags().StringVar(&from, "from", "", "start point in type/value format (e.g. offset/0)")
 	getCmd.Flags().StringVar(&to, "to", "", "stop point in type/value format (e.g. offset/100)")
+	getCmd.Flags().BoolVar(&wait, "wait", false, "wait past high watermark for new messages instead of stopping at current end")
 	getCmd.MarkFlagRequired("from")
 	getCmd.MarkFlagRequired("to")
 	rootCmd.AddCommand(getCmd)
@@ -50,7 +52,7 @@ func runGet(cmd *cobra.Command, args []string) error {
 	}
 	defer cl.Close()
 
-	records, err := kafka.Get(cl, topic, onStart, onRecord)
+	records, err := kafka.Get(cl, topic, onStart, onRecord, !wait)
 	if err != nil {
 		return err
 	}
