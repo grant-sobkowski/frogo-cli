@@ -1,0 +1,5 @@
+{"key": "k1", "value": "hello world"}
+{"key": "k2", "value": "foo bar"}
+{"value": "no key message"}
+{"key": "k4", "value": {"nested": true}}
+{"key": "k5", "value": "line five"}
