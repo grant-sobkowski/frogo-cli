@@ -191,6 +191,42 @@ func TestIntegration_PutRecordJSON(t *testing.T) {
 	}
 }
 
+// ─────────────────────────── GET WITH INDEX ───────────────────────────
+
+func TestIntegration_GetIndex(t *testing.T) {
+	topic := "test-get-index"
+	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+
+	// index/0 to index/-2: should get first 4 messages (offsets 0-3), stopping before the last
+	out := runCmd(t, "get", topic, "--from", "index/0", "--to", "index/-2", "--profile", "test")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 4 {
+		t.Fatalf("expected 4 lines for index/0..index/-2, got %d: %s", len(lines), out)
+	}
+	if !strings.Contains(out, "msg-zero") {
+		t.Errorf("expected 'msg-zero' in output, got: %s", out)
+	}
+	if strings.Contains(out, "msg-four") {
+		t.Errorf("should not contain 'msg-four' for index/-2, got: %s", out)
+	}
+
+	// index/-3 to index/-1: should get last 3 messages (offsets 2-4)
+	out = runCmd(t, "get", topic, "--from", "index/-3", "--to", "index/-1", "--profile", "test")
+	lines = strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 3 {
+		t.Fatalf("expected 3 lines for index/-3..index/-1, got %d: %s", len(lines), out)
+	}
+	if !strings.Contains(out, "msg-two") {
+		t.Errorf("expected 'msg-two' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "msg-four") {
+		t.Errorf("expected 'msg-four' in output, got: %s", out)
+	}
+	if strings.Contains(out, "msg-one") {
+		t.Errorf("should not contain 'msg-one' for index/-3, got: %s", out)
+	}
+}
+
 // ─────────────────────────── GET WITH OFFSETS ───────────────────────────
 
 func TestIntegration_GetFromOffsetToOffset(t *testing.T) {
@@ -237,5 +273,24 @@ func TestIntegration_GetUnixTimestamp(t *testing.T) {
 	}
 	if !strings.Contains(out, "msg-four") {
 		t.Errorf("expected 'msg-four' in get output, got: %s", out)
+	}
+}
+
+// ─────────────────────────── GET WITH ALIAS ───────────────────────────
+
+func TestIntegration_GetAlias(t *testing.T) {
+	topic := "test-get-alias"
+	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+
+	out := runCmd(t, "get", topic, "--from", "alias/START", "--to", "alias/END", "--profile", "test")
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) != 5 {
+		t.Fatalf("expected 5 lines for alias/START..alias/END, got %d: %s", len(lines), out)
+	}
+	if !strings.Contains(out, "msg-zero") {
+		t.Errorf("expected 'msg-zero' in output, got: %s", out)
+	}
+	if !strings.Contains(out, "msg-four") {
+		t.Errorf("expected 'msg-four' in output, got: %s", out)
 	}
 }

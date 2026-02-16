@@ -15,6 +15,7 @@ type GetState struct {
 	completedPartitions []int32              // holds IDs of partitions deemed completed by onRecord hook
 	lastProcessed       map[int32]kgo.Record // holds offsets of processed records, by partition ID
 	topicMeta           *kadm.TopicDetail
+	HighWatermarks      map[int32]kadm.ListedOffset // populated when stopOnHighWatermark is true
 }
 
 // Consume a given topic using hooks.
@@ -32,22 +33,29 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		return nil, err
 	}
 
+	state := GetState{completedPartitions: []int32{}, lastProcessed: make(map[int32]kgo.Record), topicMeta: topicMeta}
+
+	// Make listOffsets request
+	// In cases where --wait is not specified, we need the high watermark offset
+	// in order to determine when all existing messages have been completed.
 	var highWatermarks *map[int32]kadm.ListedOffset
 	if stopOnHighWatermark {
 		highWatermarks, err = topicHighWatermarks(cl, topicMeta)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get high watermarks: %w", err)
 		}
+		state.HighWatermarks = *highWatermarks
 	}
-
-	state := GetState{completedPartitions: []int32{}, lastProcessed: make(map[int32]kgo.Record), topicMeta: topicMeta}
-	records := []*kgo.Record{}
 
 	startOffsets, err := onStart(state)
 	if err != nil {
 		return nil, fmt.Errorf("onStart hook failed: %w", err)
 	}
-	// onStart can specify a nil value to indicate that no consumption is needed
+
+	records := []*kgo.Record{}
+
+	// Allow onStart hook to exit before any messages are fetched, in cases
+	// where there's nothing to do.
 	if startOffsets == nil {
 		return records, nil
 	}
@@ -92,14 +100,15 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 			return nil, hookErr
 		}
 
-		// Consumption stops once all partitions are marked 'complete' by our onRecord hook.
-		// This requires at least one record to be processed from each partition in the topic.
-		// For cases where some partitions sit stale, the onStart hook should set starting
-		// offsets accordingly to prevent unnecessary waiting / timeouts
+		// All partitions are marked 'complete' by our onRecord hook; exit.
+		// Each partition must have had at least one record processed for this to occur.
 		if len(state.completedPartitions) == len(topicMeta.Partitions.Numbers()) {
 			return records, nil
 		}
 
+		// Reached high watermark of topic; exit.
+		// Prevents cases where onRecord hook will never return true because topic isn't
+		// recieving any new messages.
 		if stopOnHighWatermark && isPastHighWatermark(*highWatermarks, state.lastProcessed) {
 			return records, nil
 		}
@@ -167,8 +176,6 @@ func topicHighWatermarks(cl *kgo.Client, td *kadm.TopicDetail) (*map[int32]kadm.
 
 // isPastHighWatermark returns true if every partition in the high watermark map
 // has a lastProcessed record at or past its high watermark offset.
-// High watermark is the offset of the next message to be written, so offset >= hwm-1
-// means all existing messages have been consumed.
 func isPastHighWatermark(highWatermarks map[int32]kadm.ListedOffset, lastProcessed map[int32]kgo.Record) bool {
 	for partition, listed := range highWatermarks {
 		// Empty partition (hwm 0) — nothing to consume, skip

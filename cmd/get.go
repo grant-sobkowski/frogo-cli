@@ -39,6 +39,16 @@ func init() {
 func runGet(cmd *cobra.Command, args []string) error {
 	topic := args[0]
 
+	// --wait disables high watermark stopping, but negative indices need high watermarks to compute targets
+	if wait && strings.HasPrefix(to, "index/") {
+		return fmt.Errorf("--to index/ is not compatible with --wait (negative indices require high watermarks)")
+	}
+
+	// FUTURE never stops on its own, so without --wait the consumer would halt at the high watermark and miss the point
+	if to == "alias/FUTURE" && !wait {
+		return fmt.Errorf("--to alias/FUTURE requires --wait (FUTURE streams indefinitely past the high watermark)")
+	}
+
 	onStart, err := parseFromArg(from)
 	if err != nil {
 		return err
@@ -105,8 +115,23 @@ func parseFromArg(from string) (kafka.OnStartHook, error) {
 			return nil, fmt.Errorf("invalid --from: %w", err)
 		}
 		return kafka.OnStartUnixMillis(&kafka.UnixMillisOffset{Millis: millis}), nil
+	case "index":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --from: invalid index value %q: %w", value, err)
+		}
+		return kafka.OnStartIndex(&kafka.IndexOffset{Index: v}), nil
+	case "alias":
+		switch value {
+		case "START":
+			return kafka.OnStartAliasStart(), nil
+		case "END":
+			return kafka.OnStartAliasEnd(), nil
+		default:
+			return nil, fmt.Errorf("unsupported --from alias %q (supported: START, END)", value)
+		}
 	default:
-		return nil, fmt.Errorf("unsupported from type %q (supported: offset, unix, iso, date)", typ)
+		return nil, fmt.Errorf("unsupported from type %q (supported: offset, unix, iso, date, index, alias)", typ)
 	}
 }
 
@@ -141,8 +166,23 @@ func parseToArg(to string) (kafka.OnRecordHook, error) {
 			return nil, fmt.Errorf("invalid --to: %w", err)
 		}
 		return kafka.OnRecordUnixMillis(&kafka.UnixMillisOffset{Millis: millis}), nil
+	case "index":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --to: invalid index value %q: %w", value, err)
+		}
+		return kafka.OnRecordIndex(&kafka.IndexOffset{Index: v}), nil
+	case "alias":
+		switch value {
+		case "END":
+			return kafka.OnRecordAliasEnd(), nil
+		case "FUTURE":
+			return kafka.OnRecordAliasFuture(), nil
+		default:
+			return nil, fmt.Errorf("unsupported --to alias %q (supported: END, FUTURE)", value)
+		}
 	default:
-		return nil, fmt.Errorf("unsupported to type %q (supported: offset, unix, iso, date)", typ)
+		return nil, fmt.Errorf("unsupported to type %q (supported: offset, unix, iso, date, index, alias)", typ)
 	}
 }
 

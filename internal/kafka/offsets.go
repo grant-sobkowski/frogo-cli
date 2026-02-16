@@ -53,6 +53,68 @@ func OnRecordUnixMillis(um *UnixMillisOffset) OnRecordHook {
 	}
 }
 
+//  ──────────────────────────── INDEX OFFSET ────────────────────────────
+
+type IndexOffset struct {
+	Index int64
+}
+
+func OnStartIndex(idx *IndexOffset) OnStartHook {
+	return func(state GetState) (map[string]map[int32]kgo.Offset, error) {
+		var offset kgo.Offset
+		switch {
+		case idx.Index == 0:
+			offset = kgo.NewOffset().AtStart()
+		case idx.Index > 0:
+			offset = kgo.NewOffset().AtStart().Relative(idx.Index)
+		default: // negative
+			offset = kgo.NewOffset().AtEnd().Relative(idx.Index)
+		}
+		return partitionOffsets(*state.topicMeta, offset), nil
+	}
+}
+
+func OnRecordIndex(idx *IndexOffset) OnRecordHook {
+	return func(record kgo.Record, state GetState) (bool, error) {
+		if idx.Index >= 0 {
+			return record.Offset >= idx.Index, nil
+		}
+		// Negative index: compute target offset from high watermark
+		hwm, ok := state.HighWatermarks[record.Partition]
+		if !ok {
+			return false, nil
+		}
+		target := hwm.Offset + idx.Index + 1
+		return record.Offset >= target, nil
+	}
+}
+
+//  ──────────────────────────── ALIAS OFFSETS ────────────────────────────
+
+func OnStartAliasStart() OnStartHook {
+	return func(state GetState) (map[string]map[int32]kgo.Offset, error) {
+		return partitionOffsets(*state.topicMeta, kgo.NewOffset().AtStart()), nil
+	}
+}
+
+func OnStartAliasEnd() OnStartHook {
+	return func(state GetState) (map[string]map[int32]kgo.Offset, error) {
+		return partitionOffsets(*state.topicMeta, kgo.NewOffset().AtEnd()), nil
+	}
+}
+
+func OnRecordAliasEnd() OnRecordHook {
+	return func(record kgo.Record, state GetState) (bool, error) {
+		return false, nil
+	}
+}
+
+func OnRecordAliasFuture() OnRecordHook {
+	return func(record kgo.Record, state GetState) (bool, error) {
+		return false, nil
+	}
+}
+
 // partitionOffsets formats `at` offset as a map of partition offsets
 func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
 
