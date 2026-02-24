@@ -13,8 +13,10 @@ import (
 var deleteTopicCmd = &cobra.Command{
 	Use:   "delete-topic <topic>",
 	Short: "Delete a Kafka topic",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runDeleteTopic,
+	Example: `  # Delete a topic
+  frogo delete-topic my-topic`,
+	Args: cobra.ExactArgs(1),
+	RunE: runDeleteTopic,
 }
 
 func init() {

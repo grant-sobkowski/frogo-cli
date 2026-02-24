@@ -20,7 +20,22 @@ var format string
 var putCmd = &cobra.Command{
 	Use:   "put <topic>",
 	Short: "Produce messages to a Kafka topic from a file",
-	Args:  cobra.ExactArgs(1),
+	Long: `Read messages from a file and produce them to a Kafka topic.
+Each line in the file is treated as one message.
+
+Supported formats:
+  utf8         plain text, one message per line (default)
+  base64       base64-encoded message values, one per line
+  record-json  JSON objects with "key" and "value" fields, one per line`,
+	Example: `  # Produce plain-text messages from a file
+  frogo put my-topic --file messages.txt
+
+  # Produce base64-encoded binary messages
+  frogo put my-topic --file messages.b64 --format base64
+
+  # Produce messages with explicit keys using record-json format
+  frogo put my-topic --file records.jsonl --format record-json`,
+	Args: cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
 		switch format {
 		case "utf8", "base64", "record-json":

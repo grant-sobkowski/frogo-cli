@@ -22,8 +22,36 @@ var tz string
 var getCmd = &cobra.Command{
 	Use:   "get <topic>",
 	Short: "Consume messages from a Kafka topic",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runGet,
+	Long: `Read from a Kafka topic by specifying a start point (--from) and a stop point (--to).
+Both flags are required and use type/value format.
+
+Supported types for --from:
+  offset/<n>        absolute offset (0-based)
+  index/<n>         relative index from end (negative: -1 = last message)
+  unix/<ts>         unix timestamp (seconds ≤10 digits, milliseconds otherwise)
+  iso/<rfc3339>     ISO 8601 timestamp (e.g. 2024-01-15T09:00:00Z)
+  date/<yy:mm:dd>   calendar date; resolves to start of day in --tz
+  alias/START       first available offset
+  alias/END         current high watermark
+
+Supported types for --to:
+  offset/<n>        stop at this absolute offset (exclusive)
+  index/<n>         relative index from end
+  unix/<ts>         stop at this unix timestamp
+  iso/<rfc3339>     stop at this ISO timestamp
+  date/<yy:mm:dd>   calendar date; resolves to end of day in --tz
+  alias/END         current high watermark
+  alias/FUTURE      stream indefinitely (requires --wait)`,
+	Example: `  # Fetch the last 10 messages
+  frogo get my-topic --from index/-10 --to alias/END
+
+  # Fetch all messages from the beginning
+  frogo get my-topic --from alias/START --to alias/END
+
+  # Stream new messages as they arrive (live tail)
+  frogo get my-topic --from alias/END --to alias/FUTURE --wait`,
+	Args: cobra.ExactArgs(1),
+	RunE: runGet,
 }
 
 func init() {

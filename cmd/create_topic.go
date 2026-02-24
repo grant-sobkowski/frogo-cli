@@ -15,8 +15,13 @@ var partitions int32
 var createTopicCmd = &cobra.Command{
 	Use:   "create-topic <topic>",
 	Short: "Create a Kafka topic",
-	Args:  cobra.ExactArgs(1),
-	RunE:  runCreateTopic,
+	Example: `  # Create a topic with 1 partition (default)
+  frogo create-topic my-topic
+
+  # Create a topic with 3 partitions
+  frogo create-topic my-topic --partitions 3`,
+	Args: cobra.ExactArgs(1),
+	RunE: runCreateTopic,
 }
 
 func init() {
