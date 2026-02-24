@@ -49,13 +49,9 @@ var configureBrokersCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		brokers := strings.Split(args[0], ",")
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.Brokers = brokers
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set brokers for profile %q: %v\n", profile, brokers)
-		return nil
+		})
 	},
 }
 
@@ -64,13 +60,9 @@ var configureSecurityProtocolCmd = &cobra.Command{
 	Short: "Set the security protocol (plaintext, ssl, sasl_plaintext, sasl_ssl)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.SecurityProtocol = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set security-protocol for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -79,13 +71,9 @@ var configureSASLMechanismCmd = &cobra.Command{
 	Short: "Set the SASL mechanism (PLAIN, SCRAM-SHA-256, SCRAM-SHA-512, AWS_MSK_IAM)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.SASLMechanism = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set sasl-mechanism for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -94,13 +82,9 @@ var configureSASLUsernameCmd = &cobra.Command{
 	Short: "Set the SASL username for a profile",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.SASLUsername = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set sasl-username for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -109,13 +93,9 @@ var configureSASLPasswordCmd = &cobra.Command{
 	Short: "Set the SASL password for a profile",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.SASLPassword = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set sasl-password for profile %q\n", profile)
-		return nil
+		})
 	},
 }
 
@@ -128,13 +108,9 @@ var configureMessageMaxBytesCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid byte count %q: %w", args[0], err)
 		}
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.MessageMaxBytes = int32(n)
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set message-max-bytes for profile %q: %d\n", profile, n)
-		return nil
+		})
 	},
 }
 
@@ -147,13 +123,9 @@ var configureReceiveMessageMaxBytesCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid byte count %q: %w", args[0], err)
 		}
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.ReceiveMessageMaxBytes = int32(n)
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set receive-message-max-bytes for profile %q: %d\n", profile, n)
-		return nil
+		})
 	},
 }
 
@@ -162,13 +134,9 @@ var configureTLSCACertFileCmd = &cobra.Command{
 	Short: "Set the path to the TLS CA certificate file",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.TLSCACertFile = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set tls-ca-cert-file for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -177,13 +145,9 @@ var configureTLSClientCertFileCmd = &cobra.Command{
 	Short: "Set the path to the TLS client certificate file",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.TLSClientCertFile = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set tls-client-cert-file for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -192,13 +156,9 @@ var configureTLSClientKeyFileCmd = &cobra.Command{
 	Short: "Set the path to the TLS client key file",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.TLSClientKeyFile = args[0]
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set tls-client-key-file for profile %q: %s\n", profile, args[0])
-		return nil
+		})
 	},
 }
 
@@ -211,12 +171,8 @@ var configureTLSSkipVerifyCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("invalid boolean %q (use true or false)", args[0])
 		}
-		if err := updateProfile(profile, func(p *config.Profile) {
+		return updateProfile(profile, func(p *config.Profile) {
 			p.TLSSkipVerify = val
-		}); err != nil {
-			return err
-		}
-		fmt.Printf("set tls-skip-verify for profile %q: %v\n", profile, val)
-		return nil
+		})
 	},
 }
