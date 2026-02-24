@@ -189,6 +189,18 @@ func (p Profile) messageSizeOpts() ([]kgo.Opt, error) {
 	return opts, nil
 }
 
+// GetProfile retrieves the raw Profile struct for a named profile.
+// If the profile doesn't exist, an empty Profile is returned (not an error).
+func GetProfile(name string) (Profile, error) {
+	cfg, err := readConfigFile()
+	if err != nil {
+		return Profile{}, err
+	}
+	p := cfg.Profiles[name]
+	p.Name = name
+	return p, nil
+}
+
 // WriteProfileConfig loads the current config, updates a single profile, and writes it back
 func WriteProfile(p Profile) error {
 	// Load existing config or create new one
