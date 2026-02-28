@@ -10,6 +10,34 @@ TODO
 
 ## Usage
 
+```sh
+# Start a mockserver!
+frogo mockserver
+
+# In another terminal, create a topic
+frogo create-topic hello-world --profile mockserver
+
+# Create a text file with some data
+cat <<EOF > ./example.txt
+Hello
+world
+this is
+my
+topic!
+EOF
+
+# Put your data in your topic!
+frogo put hello-world --file example.txt --profile mockserver
+
+# Get your topic's data!
+frogo get hello-world --from alias/START --to alias/END --profile mockserver
+
+# Get the last 3 messages from your topic!
+frogo get hello-world --from index/-3 --to alias/END --profile mockserver
+
+
+```
+
 ## Roadmap
 
 ## Acknowledgements
