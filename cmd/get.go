@@ -26,22 +26,22 @@ var getCmd = &cobra.Command{
 Both flags are required and use type/value format.
 
 Supported types for --from:
+  START             first available offset
+  END         		current high watermark
   offset/<n>        absolute offset (0-based)
   index/<n>         relative index from end (negative: -1 = last message)
   unix/<ts>         unix timestamp (seconds ≤10 digits, milliseconds otherwise)
   iso/<rfc3339>     ISO 8601 timestamp (e.g. 2024-01-15T09:00:00Z)
   date/<yy:mm:dd>   calendar date; resolves to start of day in --tz
-  alias/START       first available offset
-  alias/END         current high watermark
 
 Supported types for --to:
+  END		        current high watermark
+  FUTURE            stream indefinitely (requires --wait)
   offset/<n>        stop at this absolute offset (exclusive)
   index/<n>         relative index from end
   unix/<ts>         stop at this unix timestamp
   iso/<rfc3339>     stop at this ISO timestamp
-  date/<yy:mm:dd>   calendar date; resolves to end of day in --tz
-  alias/END         current high watermark
-  alias/FUTURE      stream indefinitely (requires --wait)`,
+  date/<yy:mm:dd>   calendar date; resolves to end of day in --tz`,
 	Example: `  # Fetch the last 10 messages
   frogo get my-topic --from index/-10 --to alias/END
 
@@ -105,6 +105,17 @@ func runGet(cmd *cobra.Command, args []string) error {
 // ──────────────────────────── PARSING ────────────────────────────
 
 func parseTypeValueFormat(s string) (string, string, error) {
+	// Accept omitted types for our 'alias' values
+	// this is done for convenience as aliases are used most.
+	if s == "START" || s == "start" {
+		return "alias", "START", nil
+	}
+	if s == "END" || s == "end" {
+		return "alias", "END", nil
+	}
+	if s == "FUTURE" || s == "future" {
+		return "alias", "FUTURE", nil
+	}
 	parts := strings.SplitN(s, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return "", "", fmt.Errorf("expected format \"type/value\", got %q", s)

@@ -401,10 +401,10 @@ func TestOnRecordAliasFuture(t *testing.T) {
 
 func TestOnRecordUnixMillis(t *testing.T) {
 	tests := []struct {
-		name        string
-		stopMillis  int64
-		recordTime  time.Time
-		want        bool
+		name       string
+		stopMillis int64
+		recordTime time.Time
+		want       bool
 	}{
 		{
 			name:       "record before stop time",

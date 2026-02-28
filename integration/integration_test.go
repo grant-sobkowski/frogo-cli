@@ -282,7 +282,7 @@ func TestIntegration_GetAlias(t *testing.T) {
 	topic := "test-get-alias"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
-	out := runCmd(t, "get", topic, "--from", "alias/START", "--to", "alias/END", "--profile", "test")
+	out := runCmd(t, "get", topic, "--from", "START", "--to", "END", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
 		t.Fatalf("expected 5 lines for alias/START..alias/END, got %d: %s", len(lines), out)
