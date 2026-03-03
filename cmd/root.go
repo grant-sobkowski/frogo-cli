@@ -42,6 +42,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "default", "Configuration profile to use for Kafka connection")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging to stderr (INFO level)")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		cmd.Root().SilenceUsage = true
 		logger.Init(verbose)
 		return nil
 	}
