@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/twmb/franz-go/pkg/kfake"
 )
 
@@ -84,7 +85,7 @@ func (m *Cluster) Stop() {
 	}
 	err := removeState()
 	if err != nil {
-		fmt.Printf("WARNING: error removing statefile %s", err)
+		logger.L.Warnf("failed to remove statefile: %v", err)
 	}
 }
 

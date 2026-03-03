@@ -38,6 +38,9 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
 
 ## Roadmap
 
+[ ] Refactor logging to use zap
+    [ ] WARN Mode (default)
+    [ ] INFO -> kafka api calls, high level logic
 [ ] Fix --to FUTURE support
 [ ] Add container testing for common configuration scenarios
 

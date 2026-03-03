@@ -6,6 +6,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -45,12 +46,14 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 			return nil, fmt.Errorf("failed to get high watermarks: %w", err)
 		}
 		state.HighWatermarks = *highWatermarks
+		logger.LogWatermarks(*highWatermarks)
 	}
 
 	startOffsets, err := onStart(state)
 	if err != nil {
 		return nil, fmt.Errorf("onStart hook failed: %w", err)
 	}
+	logger.LogStartOffsets(startOffsets)
 
 	records := []*kgo.Record{}
 

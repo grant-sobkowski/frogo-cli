@@ -259,6 +259,6 @@ func parseDateToMillis(value string, endOfDay bool) (int64, error) {
 
 func printRecords(records []*kgo.Record) {
 	for _, r := range records {
-		fmt.Printf("offset=%d value=%s\n", r.Offset, string(r.Value))
+		fmt.Printf("%d %s\n", r.Offset, string(r.Value))
 	}
 }
