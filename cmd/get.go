@@ -77,6 +77,11 @@ func runGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--to alias/FUTURE requires --wait (FUTURE streams indefinitely past the high watermark)")
 	}
 
+	// END stops at the current high watermark, so --wait (which streams past it) is contradictory
+	if wait && (to == "END" || to == "end" || to == "alias/END") {
+		return fmt.Errorf("--wait is not compatible with --to END (END stops at the current high watermark)")
+	}
+
 	onStart, err := parseFromArg(from)
 	if err != nil {
 		return err
