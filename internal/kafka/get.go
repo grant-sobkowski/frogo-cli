@@ -55,12 +55,10 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 	}
 	logger.LogStartOffsets(startOffsets)
 
-	records := []*kgo.Record{}
-
 	// Allow onStart hook to exit before any messages are fetched, in cases
 	// where there's nothing to do.
 	if startOffsets == nil {
-		return records, nil
+		return nil, nil
 	}
 
 	// AddConsumePartitions configures franz-go to start retrieving records.
@@ -92,12 +90,10 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 				hookErr = fmt.Errorf("onRecord hook failed: %w", err)
 				return
 			}
-			// onRecord hook has deemed this partition complete
 			if stop {
 				state.completedPartitions = append(state.completedPartitions, r.Partition)
 				return
 			}
-			records = append(records, r)
 		})
 		if hookErr != nil {
 			return nil, hookErr
@@ -106,19 +102,19 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		// All partitions are marked 'complete' by our onRecord hook; exit.
 		// Each partition must have had at least one record processed for this to occur.
 		if len(state.completedPartitions) == len(topicMeta.Partitions.Numbers()) {
-			return records, nil
+			return nil, nil
 		}
 
 		// Reached high watermark of topic; exit.
 		// Prevents cases where onRecord hook will never return true because topic isn't
 		// recieving any new messages.
 		if stopOnHighWatermark && isPastHighWatermark(*highWatermarks, state.lastProcessed) {
-			return records, nil
+			return nil, nil
 		}
 
 		select {
 		case <-ctx.Done():
-			return records, ctx.Err()
+			return nil, ctx.Err()
 		default:
 		}
 	}

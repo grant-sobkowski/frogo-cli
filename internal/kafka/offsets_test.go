@@ -81,31 +81,31 @@ func TestOnRecordStrict(t *testing.T) {
 		name         string
 		stopOffset   int64
 		recordOffset int64
-		want         bool
+		wantStop     bool
 	}{
 		{
 			name:         "record before stop offset",
 			stopOffset:   10,
 			recordOffset: 5,
-			want:         false,
+			wantStop:     false,
 		},
 		{
 			name:         "record at stop offset",
 			stopOffset:   10,
 			recordOffset: 10,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "record past stop offset",
 			stopOffset:   10,
 			recordOffset: 15,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "zero stop offset with zero record",
 			stopOffset:   0,
 			recordOffset: 0,
-			want:         true,
+			wantStop:     true,
 		},
 	}
 
@@ -117,12 +117,12 @@ func TestOnRecordStrict(t *testing.T) {
 			record := kgo.Record{Offset: tt.recordOffset}
 
 			hook := OnRecordStrict(abs)
-			got, err := hook(record, state)
+			gotStop, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.want {
-				t.Errorf("OnRecordStrict() = %v, want %v", got, tt.want)
+			if gotStop != tt.wantStop {
+				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
 			}
 		})
 	}
@@ -242,66 +242,66 @@ func TestOnRecordIndex(t *testing.T) {
 		index        int64
 		recordOffset int64
 		hwm          int64 // high watermark offset (only used for negative indices)
-		want         bool
+		wantStop     bool
 	}{
 		{
 			name:         "positive index: record before",
 			index:        5,
 			recordOffset: 3,
-			want:         false,
+			wantStop:     false,
 		},
 		{
 			name:         "positive index: record at index",
 			index:        5,
 			recordOffset: 5,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "positive index: record past index",
 			index:        5,
 			recordOffset: 7,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "zero index: record at zero",
 			index:        0,
 			recordOffset: 0,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "negative index -2: hwm=10, record at 8 (before target 9)",
 			index:        -2,
 			recordOffset: 8,
 			hwm:          10,
-			want:         false,
+			wantStop:     false,
 		},
 		{
 			name:         "negative index -2: hwm=10, record at 9 (at target)",
 			index:        -2,
 			recordOffset: 9,
 			hwm:          10,
-			want:         true,
+			wantStop:     true,
 		},
 		{
 			name:         "negative index -1: hwm=10, record at 9 (target=10, never stops)",
 			index:        -1,
 			recordOffset: 9,
 			hwm:          10,
-			want:         false,
+			wantStop:     false,
 		},
 		{
 			name:         "negative index -3: hwm=5, record at 2 (before target 3)",
 			index:        -3,
 			recordOffset: 2,
 			hwm:          5,
-			want:         false,
+			wantStop:     false,
 		},
 		{
 			name:         "negative index -3: hwm=5, record at 3 (at target)",
 			index:        -3,
 			recordOffset: 3,
 			hwm:          5,
-			want:         true,
+			wantStop:     true,
 		},
 	}
 
@@ -320,12 +320,12 @@ func TestOnRecordIndex(t *testing.T) {
 			record := kgo.Record{Offset: tt.recordOffset, Partition: 0}
 
 			hook := OnRecordIndex(idx)
-			got, err := hook(record, state)
+			gotStop, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.want {
-				t.Errorf("OnRecordIndex() = %v, want %v", got, tt.want)
+			if gotStop != tt.wantStop {
+				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
 			}
 		})
 	}
@@ -375,12 +375,12 @@ func TestOnRecordAliasEnd(t *testing.T) {
 	record := kgo.Record{Offset: 42}
 
 	hook := OnRecordAliasEnd()
-	got, err := hook(record, state)
+	stop, err := hook(record, state)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got != false {
-		t.Errorf("OnRecordAliasEnd() = %v, want false", got)
+	if stop {
+		t.Errorf("OnRecordAliasEnd() stop = true, want false")
 	}
 }
 
@@ -390,12 +390,12 @@ func TestOnRecordAliasFuture(t *testing.T) {
 	record := kgo.Record{Offset: 42}
 
 	hook := OnRecordAliasFuture()
-	got, err := hook(record, state)
+	stop, err := hook(record, state)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got != false {
-		t.Errorf("OnRecordAliasFuture() = %v, want false", got)
+	if stop {
+		t.Errorf("OnRecordAliasFuture() stop = true, want false")
 	}
 }
 
@@ -404,31 +404,31 @@ func TestOnRecordUnixMillis(t *testing.T) {
 		name       string
 		stopMillis int64
 		recordTime time.Time
-		want       bool
+		wantStop   bool
 	}{
 		{
 			name:       "record before stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1699999999000),
-			want:       false,
+			wantStop:   false,
 		},
 		{
 			name:       "record at stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1700000000000),
-			want:       true,
+			wantStop:   true,
 		},
 		{
 			name:       "record past stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1700000001000),
-			want:       true,
+			wantStop:   true,
 		},
 		{
 			name:       "zero millis with zero record",
 			stopMillis: 0,
 			recordTime: time.UnixMilli(0),
-			want:       true,
+			wantStop:   true,
 		},
 	}
 
@@ -440,12 +440,12 @@ func TestOnRecordUnixMillis(t *testing.T) {
 			record := kgo.Record{Timestamp: tt.recordTime}
 
 			hook := OnRecordUnixMillis(um)
-			got, err := hook(record, state)
+			gotStop, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if got != tt.want {
-				t.Errorf("OnRecordUnixMillis() = %v, want %v", got, tt.want)
+			if gotStop != tt.wantStop {
+				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
 			}
 		})
 	}

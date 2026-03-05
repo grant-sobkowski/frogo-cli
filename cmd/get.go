@@ -9,7 +9,6 @@ import (
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
 	"github.com/grant-sobkowski/frogo-cli/internal/kafka"
 	"github.com/spf13/cobra"
-	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // ──────────────────────────── COMMAND ────────────────────────────
@@ -98,13 +97,8 @@ func runGet(cmd *cobra.Command, args []string) error {
 	}
 	defer cl.Close()
 
-	records, err := kafka.Get(cl, topic, onStart, onRecord, !wait)
-	if err != nil {
-		return err
-	}
-
-	printRecords(records)
-	return nil
+	_, err = kafka.Get(cl, topic, onStart, onRecord, !wait)
+	return err
 }
 
 // ──────────────────────────── PARSING ────────────────────────────
@@ -260,10 +254,3 @@ func parseDateToMillis(value string, endOfDay bool) (int64, error) {
 	return t.UnixMilli(), nil
 }
 
-// ──────────────────────────── OUTPUT ────────────────────────────
-
-func printRecords(records []*kgo.Record) {
-	for _, r := range records {
-		fmt.Printf("%d %s\n", r.Offset, string(r.Value))
-	}
-}

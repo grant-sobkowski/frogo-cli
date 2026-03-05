@@ -1,9 +1,16 @@
 package kafka
 
 import (
+	"fmt"
+
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
+
+// OutputRecord prints a record to stdout.
+func OutputRecord(r *kgo.Record) {
+	fmt.Printf("%d %s\n", r.Offset, string(r.Value))
+}
 
 // onStartHook is called once before consuming begins.
 // It receives the current GetState and returns partition offsets to consume from.
@@ -11,8 +18,8 @@ import (
 type OnStartHook func(state GetState) (map[string]map[int32]kgo.Offset, error)
 
 // onRecordHook is called on each consumed record.
-// It receives the current GetState and returns true if the current partition
-// should be considered completed, false otherwise.
+// It returns (stop, error): stop marks the partition complete.
+// Hooks call state.OutputRecord to include a record in results.
 type OnRecordHook func(record kgo.Record, state GetState) (bool, error)
 
 //  ──────────────────────────── STRICT OFFSET ────────────────────────────
@@ -30,7 +37,17 @@ func OnStartStrict(abs *StrictOffset) OnStartHook {
 
 func OnRecordStrict(abs *StrictOffset) OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
-		return record.Offset >= abs.Offset, nil
+		// This record is outside our range, stop and don't output anything
+		if record.Offset >= abs.Offset {
+			return true, nil
+		}
+		// Record is last message in our range, output then stop
+		if record.Offset+1 == abs.Offset {
+			OutputRecord(&record)
+			return true, nil
+		}
+		OutputRecord(&record)
+		return false, nil
 	}
 }
 
@@ -49,7 +66,11 @@ func OnStartUnixMillis(um *UnixMillisOffset) OnStartHook {
 
 func OnRecordUnixMillis(um *UnixMillisOffset) OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
-		return record.Timestamp.UnixMilli() >= um.Millis, nil
+		past := record.Timestamp.UnixMilli() >= um.Millis
+		if !past {
+			OutputRecord(&record)
+		}
+		return past, nil
 	}
 }
 
@@ -76,16 +97,22 @@ func OnStartIndex(idx *IndexOffset) OnStartHook {
 
 func OnRecordIndex(idx *IndexOffset) OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
+		var stop bool
 		if idx.Index >= 0 {
-			return record.Offset >= idx.Index, nil
+			stop = record.Offset >= idx.Index
+		} else {
+			hwm, ok := state.HighWatermarks[record.Partition]
+			if !ok {
+				OutputRecord(&record)
+				return false, nil
+			}
+			target := hwm.Offset + idx.Index + 1
+			stop = record.Offset >= target
 		}
-		// Negative index: compute target offset from high watermark
-		hwm, ok := state.HighWatermarks[record.Partition]
-		if !ok {
-			return false, nil
+		if !stop {
+			OutputRecord(&record)
 		}
-		target := hwm.Offset + idx.Index + 1
-		return record.Offset >= target, nil
+		return stop, nil
 	}
 }
 
@@ -105,12 +132,14 @@ func OnStartAliasEnd() OnStartHook {
 
 func OnRecordAliasEnd() OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
+		OutputRecord(&record)
 		return false, nil
 	}
 }
 
 func OnRecordAliasFuture() OnRecordHook {
 	return func(record kgo.Record, state GetState) (bool, error) {
+		OutputRecord(&record)
 		return false, nil
 	}
 }
