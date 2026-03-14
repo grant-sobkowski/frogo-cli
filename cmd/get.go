@@ -35,7 +35,7 @@ Supported types for --from:
 
 Supported types for --to:
   END		        current high watermark
-  FUTURE            stream indefinitely (requires --wait)
+  FUTURE            stream indefinitely
   offset/<n>        stop at this absolute offset (exclusive)
   index/<n>         relative index from end
   unix/<ts>         stop at this unix timestamp
@@ -71,9 +71,9 @@ func runGet(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--to index/ is not compatible with --wait (negative indices require high watermarks)")
 	}
 
-	// FUTURE never stops on its own, so without --wait the consumer would halt at the high watermark and miss the point
-	if to == "alias/FUTURE" && !wait {
-		return fmt.Errorf("--to alias/FUTURE requires --wait (FUTURE streams indefinitely past the high watermark)")
+	// FUTURE streams indefinitely, so implicitly enable --wait
+	if to == "FUTURE" || to == "future" || to == "alias/FUTURE" {
+		wait = true
 	}
 
 	// END stops at the current high watermark, so --wait (which streams past it) is contradictory

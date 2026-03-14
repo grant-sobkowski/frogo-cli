@@ -25,7 +25,13 @@ type GetState struct {
 // this prevents waiting for conditions that have already been met.
 func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHook, stopOnHighWatermark bool) ([]*kgo.Record, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	var ctx context.Context
+	var cancel context.CancelFunc
+	if stopOnHighWatermark {
+		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+	} else {
+		ctx, cancel = context.WithCancel(context.Background())
+	}
 	defer cancel()
 
 	// Make topic/cluster metadata request

@@ -42,7 +42,6 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
     [x] WARN Mode (default)
     [x] INFO -> kafka api calls, high level logic
 [x] Fix --to FUTURE support
-    [ ] Set default timeout to be never
 
 [ ] Add support for --text "my message" frogo put
 
@@ -71,7 +70,8 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
     [x] Add warning on reading an empty topic
     [x] Add verbose-mode log for whether stopOnHighWatermarks is set
 
-[ ] Fix --to future being set without --wait
+[x] Remove --wait requirement for --to future
+    [x] Set default timeout to be never when streaming
 
 ## Acknowledgements
 
