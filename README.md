@@ -42,8 +42,7 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
     [x] WARN Mode (default)
     [x] INFO -> kafka api calls, high level logic
 [x] Fix --to FUTURE support
-
-[ ] Add support for --text "my message" frogo put
+[x] Add support for --text "my message" frogo put
 
 [ ] Test support for SASL PLAIN Clusters
 [ ] Test support for SCRAM Clusters

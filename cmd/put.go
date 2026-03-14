@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
 	"github.com/grant-sobkowski/frogo-cli/internal/kafka"
@@ -15,6 +16,7 @@ import (
 )
 
 var filePath string
+var text string
 var format string
 
 var putCmd = &cobra.Command{
@@ -37,6 +39,12 @@ Supported formats:
   frogo put my-topic --file records.jsonl --format record-json`,
 	Args: cobra.ExactArgs(1),
 	PreRunE: func(cmd *cobra.Command, args []string) error {
+		if filePath == "" && text == "" {
+			return fmt.Errorf("one of --file or --text is required")
+		}
+		if filePath != "" && text != "" {
+			return fmt.Errorf("--file and --text are mutually exclusive")
+		}
 		switch format {
 		case "utf8", "base64", "record-json":
 			return nil
@@ -49,28 +57,35 @@ Supported formats:
 
 func init() {
 	putCmd.Flags().StringVar(&filePath, "file", "", "path to input file")
+	putCmd.Flags().StringVar(&text, "text", "", "input text, alternative to --file")
 	putCmd.Flags().StringVar(&format, "format", "utf8", "input format (utf8, base64, record-json)")
-	putCmd.MarkFlagRequired("file")
 	rootCmd.AddCommand(putCmd)
 }
 
 func runPut(cmd *cobra.Command, args []string) error {
 	topic := args[0]
 
-	file, err := os.Open(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to open file: %w", err)
+	var reader io.Reader
+	if text != "" {
+		reader = strings.NewReader(text)
+	} else {
+		file, err := os.Open(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to open file: %w", err)
+		}
+		defer file.Close()
+		reader = file
 	}
-	defer file.Close()
 
 	var records []*kgo.Record
+	var err error
 	switch format {
 	case "utf8":
-		records, err = parseUTF8Records(file, topic)
+		records, err = parseUTF8Records(reader, topic)
 	case "base64":
-		records, err = parseBase64Records(file, topic)
+		records, err = parseBase64Records(reader, topic)
 	case "record-json":
-		records, err = parseRecordJSONRecords(file, topic)
+		records, err = parseRecordJSONRecords(reader, topic)
 	}
 	if err != nil {
 		return err
