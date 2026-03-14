@@ -41,8 +41,14 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
 [x] Refactor logging to use zap
     [x] WARN Mode (default)
     [x] INFO -> kafka api calls, high level logic
-[ ] Fix --to FUTURE support
+[x] Fix --to FUTURE support
+    [ ] Set default timeout to be never
 [ ] Add container testing for common configuration scenarios
+    [ ] SASL PLAIN
+    [ ] MSK SASL
+    [ ] SASL SCRAM 256
+    [ ] SASL SCRAM 512
+
 
 ## Acknowledgements
 
