@@ -43,12 +43,31 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
     [x] INFO -> kafka api calls, high level logic
 [x] Fix --to FUTURE support
     [ ] Set default timeout to be never
+[ ] Add support for --text "my message" frogo put
+
+[ ] Test support for SASL PLAIN Clusters
+[ ] Test support for SCRAM Clusters
+[ ] Test support for MSK Clusters
+
 [ ] Add container testing for common configuration scenarios
     [ ] SASL PLAIN
-    [ ] MSK SASL
     [ ] SASL SCRAM 256
     [ ] SASL SCRAM 512
+    [ ] MSK SASL
 
+## Defects / Tweaks
+
+[ ] Missing profile: improve error syntax
+    [ ] Track time of last_modified for profiles
+    [ ] Add suggestion to use recently modified profiles
+
+[ ] Organize commands by object
+    get, put
+    topic -> list, create, delete
+    profile -> list, set
+
+[ ] Fix hangup on empty topic read
+[ ] Add warning on reading an empty topic
 
 ## Acknowledgements
 

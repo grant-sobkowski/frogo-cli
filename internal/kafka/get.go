@@ -40,13 +40,17 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 	// In cases where --wait is not specified, we need the high watermark offset
 	// in order to determine when all existing messages have been completed.
 	var highWatermarks *map[int32]kadm.ListedOffset
+
 	if stopOnHighWatermark {
+		logger.L.Infof("[offsets] stopOnHighWatermark true, fetching topic watermarks")
 		highWatermarks, err = topicHighWatermarks(cl, topicMeta)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get high watermarks: %w", err)
 		}
 		state.HighWatermarks = *highWatermarks
 		logger.LogWatermarks(*highWatermarks)
+	} else {
+		logger.L.Infof("[offsets] stopOnHighWatermark false, skipping fetching of topic watermarks")
 	}
 
 	startOffsets, err := onStart(state)
@@ -55,9 +59,16 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 	}
 	logger.LogStartOffsets(startOffsets)
 
-	// Allow onStart hook to exit before any messages are fetched, in cases
-	// where there's nothing to do.
+	// OnStart hook returned nil, nothing to do; exit
 	if startOffsets == nil {
+		return nil, nil
+	}
+
+	// Already at or past highWaterMark (e.g. empty topic); exit
+	if stopOnHighWatermark && isPastHighWatermark(*highWatermarks, state.lastProcessed) {
+		if isTopicEmpty(*highWatermarks) {
+			logger.L.Warnf("%s empty, nothing to do", topic)
+		}
 		return nil, nil
 	}
 
@@ -171,6 +182,16 @@ func topicHighWatermarks(cl *kgo.Client, td *kadm.TopicDetail) (*map[int32]kadm.
 	}
 
 	return &watermarks, nil
+}
+
+// isTopicEmpty returns true if all partitions have a high watermark of 0.
+func isTopicEmpty(highWatermarks map[int32]kadm.ListedOffset) bool {
+	for _, listed := range highWatermarks {
+		if listed.Offset != 0 {
+			return false
+		}
+	}
+	return true
 }
 
 // isPastHighWatermark returns true if every partition in the high watermark map
