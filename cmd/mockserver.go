@@ -53,8 +53,8 @@ func runMockserver(cmd *cobra.Command, args []string) error {
 	fmt.Printf("Mock profile '%v' configured in ~/.frogo/config.toml\n", mock.Name)
 
 	fmt.Printf("Mock server running at: %v\n", mockServer.Addrs())
-	fmt.Println("Use 'frogo get --profile mock ...' to connect to this server")
-	fmt.Println("Press Ctrl+C to stop the server (or use 'frogo mockserver stop')")
+	fmt.Println("Use 'frogo get -p mockserver ...' or set FROGO_PROFILE=mockserver to connect to this server")
+	fmt.Println("Press Ctrl+C to stop the server")
 
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)

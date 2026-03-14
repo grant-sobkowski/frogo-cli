@@ -44,6 +44,12 @@ func init() {
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		cmd.Root().SilenceUsage = true
 		logger.Init(verbose)
+		if !cmd.Root().PersistentFlags().Changed("profile") {
+			if env := os.Getenv("FROGO_PROFILE"); env != "" {
+				profile = env
+			}
+		}
+		logger.L.Infof("[config] profile: %s", profile)
 		return nil
 	}
 }
