@@ -11,14 +11,14 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-var listTopicsCmd = &cobra.Command{
-	Use:   "list-topics",
+var topicListCmd = &cobra.Command{
+	Use:   "list",
 	Short: "List all topics in the cluster",
 	RunE:  runListTopics,
 }
 
 func init() {
-	rootCmd.AddCommand(listTopicsCmd)
+	topicCmd.AddCommand(topicListCmd)
 }
 
 func runListTopics(cmd *cobra.Command, args []string) error {

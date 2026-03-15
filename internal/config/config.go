@@ -189,6 +189,19 @@ func (p Profile) messageSizeOpts() ([]kgo.Opt, error) {
 	return opts, nil
 }
 
+// ListProfiles returns the names of all profiles in the config file.
+func ListProfiles() ([]string, error) {
+	cfg, err := readConfigFile()
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(cfg.Profiles))
+	for name := range cfg.Profiles {
+		names = append(names, name)
+	}
+	return names, nil
+}
+
 // GetProfile retrieves the raw Profile struct for a named profile.
 // If the profile doesn't exist, an empty Profile is returned (not an error).
 func GetProfile(name string) (Profile, error) {

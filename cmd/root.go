@@ -40,7 +40,7 @@ func Execute() {
 func init() {
 	// Global flags available to all commands
 	rootCmd.PersistentFlags().StringVarP(&profile, "profile", "p", "default", "Configuration profile to use for Kafka connection")
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging to stderr (INFO level)")
+	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging to stderr (DEBUG level)")
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
 		cmd.Root().SilenceUsage = true
 		logger.Init(verbose)
@@ -49,7 +49,7 @@ func init() {
 				profile = env
 			}
 		}
-		logger.L.Infof("[config] profile: %s", profile)
+		logger.L.Debugf("[config] profile: %s", profile)
 		return nil
 	}
 }

@@ -8,7 +8,9 @@ import (
 
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
 	"github.com/grant-sobkowski/frogo-cli/internal/kafka"
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/spf13/cobra"
+	"github.com/twmb/franz-go/pkg/kgo"
 )
 
 // ──────────────────────────── COMMAND ────────────────────────────
@@ -97,7 +99,20 @@ func runGet(cmd *cobra.Command, args []string) error {
 	}
 	defer cl.Close()
 
-	_, err = kafka.Get(cl, topic, onStart, onRecord, !wait)
+	start := time.Now()
+	msgCount := 0
+	countingOnRecord := func(r kgo.Record, state kafka.GetState) (bool, error) {
+		stop, err := onRecord(r, state)
+		if err == nil {
+			msgCount++
+		}
+		return stop, err
+	}
+
+	_, err = kafka.Get(cl, topic, onStart, countingOnRecord, !wait)
+	if err == nil {
+		logger.L.Infof("consumed %d messages in %.2fs", msgCount, time.Since(start).Seconds())
+	}
 	return err
 }
 

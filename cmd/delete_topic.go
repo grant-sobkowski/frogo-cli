@@ -10,17 +10,17 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 )
 
-var deleteTopicCmd = &cobra.Command{
-	Use:   "delete-topic <topic>",
+var topicDeleteCmd = &cobra.Command{
+	Use:   "delete <topic>",
 	Short: "Delete a Kafka topic",
 	Example: `  # Delete a topic
-  frogo delete-topic my-topic`,
+  frogo topic delete my-topic`,
 	Args: cobra.ExactArgs(1),
 	RunE: runDeleteTopic,
 }
 
 func init() {
-	rootCmd.AddCommand(deleteTopicCmd)
+	topicCmd.AddCommand(topicDeleteCmd)
 }
 
 func runDeleteTopic(cmd *cobra.Command, args []string) error {

@@ -9,8 +9,11 @@ import (
 	"os"
 	"strings"
 
+	"time"
+
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
 	"github.com/grant-sobkowski/frogo-cli/internal/kafka"
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
@@ -97,7 +100,12 @@ func runPut(cmd *cobra.Command, args []string) error {
 	}
 	defer cl.Close()
 
-	return kafka.Put(cl, topic, records)
+	start := time.Now()
+	err = kafka.Put(cl, topic, records)
+	if err == nil {
+		logger.L.Infof("%d messages produced in %.2fs", len(records), time.Since(start).Seconds())
+	}
+	return err
 }
 
 type recordJSON struct {

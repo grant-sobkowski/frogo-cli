@@ -48,7 +48,7 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 	var highWatermarks *map[int32]kadm.ListedOffset
 
 	if stopOnHighWatermark {
-		logger.L.Infof("[offsets] stopOnHighWatermark true, fetching topic watermarks")
+		logger.L.Debugf("[offsets] stopOnHighWatermark true, fetching topic watermarks")
 		highWatermarks, err = topicHighWatermarks(cl, topicMeta)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get high watermarks: %w", err)
@@ -56,7 +56,7 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		state.HighWatermarks = *highWatermarks
 		logger.LogWatermarks(*highWatermarks)
 	} else {
-		logger.L.Infof("[offsets] stopOnHighWatermark false, skipping fetching of topic watermarks")
+		logger.L.Debugf("[offsets] stopOnHighWatermark false, skipping fetching of topic watermarks")
 	}
 
 	startOffsets, err := onStart(state)

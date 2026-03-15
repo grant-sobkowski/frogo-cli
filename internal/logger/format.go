@@ -10,11 +10,11 @@ import (
 )
 
 func LogWatermarks(wm map[int32]kadm.ListedOffset) {
-	L.Infof("[offsets] high watermarks: %s", formatWatermarks(wm))
+	L.Debugf("[offsets] high watermarks: %s", formatWatermarks(wm))
 }
 
 func LogStartOffsets(offsets map[string]map[int32]kgo.Offset) {
-	L.Infof("[offsets] start offsets: %s", formatStartOffsets(offsets))
+	L.Debugf("[offsets] start offsets: %s", formatStartOffsets(offsets))
 }
 
 func formatWatermarks(wm map[int32]kadm.ListedOffset) string {

@@ -2,11 +2,22 @@ package logger
 
 import (
 	"fmt"
+	"os"
 	"time"
 
+	"github.com/mattn/go-isatty"
 	"github.com/twmb/franz-go/pkg/kgo"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+)
+
+// ANSI color codes
+const (
+	colorReset  = "\033[0m"
+	colorGray   = "\033[90m"
+	colorCyan   = "\033[36m"
+	colorYellow = "\033[33m"
+	colorRed    = "\033[31m"
 )
 
 // L is the global sugared logger. Default is a no-op; call Init to enable logging.
@@ -14,18 +25,25 @@ var L *zap.SugaredLogger = zap.NewNop().Sugar()
 
 // Init configures the global logger. If verbose is true, INFO level is used; otherwise WARN.
 func Init(verbose bool) {
-	level := zapcore.WarnLevel
+	level := zapcore.InfoLevel
 	if verbose {
-		level = zapcore.InfoLevel
+		level = zapcore.DebugLevel
 	}
+	levelEncoder := zapcore.LevelEncoder(paddedLevelEncoder)
+	if isatty.IsTerminal(os.Stderr.Fd()) {
+		levelEncoder = zapcore.LevelEncoder(colorLevelEncoder)
+	}
+
 	cfg := zap.Config{
 		Level:    zap.NewAtomicLevelAt(level),
 		Encoding: "console",
 		EncoderConfig: zapcore.EncoderConfig{
 			TimeKey:          "T",
+			LevelKey:         "L",
 			MessageKey:       "M",
 			EncodeTime:       zapcore.TimeEncoderOfLayout("15:04:05"),
-			ConsoleSeparator: "  ",
+			EncodeLevel:      levelEncoder,
+			ConsoleSeparator: " ",
 		},
 		OutputPaths:      []string{"stderr"},
 		ErrorOutputPaths: []string{"stderr"},
@@ -38,6 +56,27 @@ func Init(verbose bool) {
 	L = base.Sugar()
 }
 
+// paddedLevelEncoder formats the level left-aligned in 5 chars, e.g. "WARN ".
+func paddedLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(fmt.Sprintf("%-5s", l.CapitalString()))
+}
+
+// colorLevelEncoder is like paddedLevelEncoder but wraps the level in ANSI color codes.
+func colorLevelEncoder(l zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+	var color string
+	switch l {
+	case zapcore.DebugLevel:
+		color = colorGray
+	case zapcore.InfoLevel:
+		color = colorCyan
+	case zapcore.WarnLevel:
+		color = colorYellow
+	default: // Error and above
+		color = colorRed
+	}
+	enc.AppendString(fmt.Sprintf("%s%-5s%s", color, l.CapitalString(), colorReset))
+}
+
 // KafkaHook logs Kafka API requests and responses via the global logger.
 // It implements kgo.HookBrokerWrite (request sent) and kgo.HookBrokerRead (response received).
 type KafkaHook struct{}
@@ -45,18 +84,18 @@ type KafkaHook struct{}
 func (h *KafkaHook) OnBrokerWrite(meta kgo.BrokerMetadata, key int16, bytesWritten int, writeWait, timeToWrite time.Duration, err error) {
 	broker := fmt.Sprintf("%s:%d", meta.Host, meta.Port)
 	if err != nil {
-		L.Infof("[kafka-api] (OUT), %s (%s): %v", kafkaAPIName(key), broker, err)
+		L.Debugf("[kafka-api] (OUT), %s (%s): %v", kafkaAPIName(key), broker, err)
 	} else {
-		L.Infof("[kafka-api] (OUT), %s (%s)", kafkaAPIName(key), broker)
+		L.Debugf("[kafka-api] (OUT), %s (%s)", kafkaAPIName(key), broker)
 	}
 }
 
 func (h *KafkaHook) OnBrokerRead(meta kgo.BrokerMetadata, key int16, bytesRead int, readWait, timeToRead time.Duration, err error) {
 	broker := fmt.Sprintf("%s:%d", meta.Host, meta.Port)
 	if err != nil {
-		L.Infof("[kafka-api] (IN), %s (%s): %v", kafkaAPIName(key), broker, err)
+		L.Debugf("[kafka-api] (IN), %s (%s): %v", kafkaAPIName(key), broker, err)
 	} else {
-		L.Infof("[kafka-api] (IN), %s (%s)", kafkaAPIName(key), broker)
+		L.Debugf("[kafka-api] (IN), %s (%s)", kafkaAPIName(key), broker)
 	}
 }
 

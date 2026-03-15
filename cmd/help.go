@@ -22,12 +22,9 @@ func init() {
 	)
 	getCmd.GroupID = "data"
 	putCmd.GroupID = "data"
-	listTopicsCmd.GroupID = "topics"
-	createTopicCmd.GroupID = "topics"
-	deleteTopicCmd.GroupID = "topics"
-	configureCmd.GroupID = "other"
+	topicCmd.GroupID = "topics"
+	configCmd.GroupID = "other"
 	mockserverCmd.GroupID = "other"
-	statusCmd.GroupID = "other"
 
 	rootCmd.SetUsageTemplate(usageTemplate)
 	rootCmd.SetHelpTemplate(`{{.UsageString}}`)

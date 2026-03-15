@@ -12,21 +12,21 @@ import (
 
 var partitions int32
 
-var createTopicCmd = &cobra.Command{
-	Use:   "create-topic <topic>",
+var topicCreateCmd = &cobra.Command{
+	Use:   "create <topic>",
 	Short: "Create a Kafka topic",
 	Example: `  # Create a topic with 1 partition (default)
-  frogo create-topic my-topic
+  frogo topic create my-topic
 
   # Create a topic with 3 partitions
-  frogo create-topic my-topic --partitions 3`,
+  frogo topic create my-topic --partitions 3`,
 	Args: cobra.ExactArgs(1),
 	RunE: runCreateTopic,
 }
 
 func init() {
-	createTopicCmd.Flags().Int32Var(&partitions, "partitions", 1, "number of partitions")
-	rootCmd.AddCommand(createTopicCmd)
+	topicCreateCmd.Flags().Int32Var(&partitions, "partitions", 1, "number of partitions")
+	topicCmd.AddCommand(topicCreateCmd)
 }
 
 func runCreateTopic(cmd *cobra.Command, args []string) error {

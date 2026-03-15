@@ -10,14 +10,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var statusCmd = &cobra.Command{
+var topicStatusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Interactive overview of cluster status",
 	Run:   runBubbleTable,
 }
 
 func init() {
-	rootCmd.AddCommand(statusCmd)
+	topicCmd.AddCommand(topicStatusCmd)
 }
 
 type model struct {

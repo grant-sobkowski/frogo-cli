@@ -44,6 +44,8 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
 [x] Fix --to FUTURE support
 [x] Add support for --text "my message" frogo put
 
+[ ] Add timing stats on ending for frogo get
+
 [ ] Test support for SASL PLAIN Clusters
 [ ] Test support for SCRAM Clusters
 [ ] Test support for MSK Clusters
@@ -56,11 +58,13 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
 
 ## Defects / Tweaks
 
+[x] Add support for configuring profile with FROGO_PROFILE 
+
 [ ] Missing profile: improve error syntax
     [ ] Track time of last_modified for profiles
     [ ] Add suggestion to use recently modified profiles
 
-[ ] Organize commands by object
+[x] Organize commands by object
     get, put
     topic -> list, create, delete
     profile -> list, set
