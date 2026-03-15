@@ -1,4 +1,6 @@
-package integration
+//go:build integration
+
+package mockserver
 
 import (
 	"bytes"
@@ -92,27 +94,27 @@ func fixturesDir() string {
 func setupFixtureTopic(t *testing.T, topic string, fixtureFile string, format string) {
 	t.Helper()
 
-	runCmd(t, "create-topic", topic, "--profile", "test")
+	runCmd(t, "topic", "create", topic, "--profile", "test")
 
 	path := filepath.Join(fixturesDir(), fixtureFile)
 	runCmd(t, "put", topic, "--file", path, "--format", format, "--profile", "test")
 
 	t.Cleanup(func() {
-		runCmd(t, "delete-topic", topic, "--profile", "test")
+		runCmd(t, "topic", "delete", topic, "--profile", "test")
 	})
 }
 
 // ─────────────────────────── TOPIC MANAGEMENT ───────────────────────────
 
-func TestIntegration_CreateAndDeleteTopic(t *testing.T) {
+func TestMockCLI_CreateAndDeleteTopic(t *testing.T) {
 	topic := "test-create-delete"
 
-	out := runCmd(t, "create-topic", topic, "--profile", "test")
+	out := runCmd(t, "topic", "create", topic, "--profile", "test")
 	if !strings.Contains(out, topic) {
 		t.Errorf("create-topic output should mention topic name, got: %s", out)
 	}
 
-	out = runCmd(t, "delete-topic", topic, "--profile", "test")
+	out = runCmd(t, "topic", "delete", topic, "--profile", "test")
 	if !strings.Contains(out, topic) {
 		t.Errorf("delete-topic output should mention topic name, got: %s", out)
 	}
@@ -120,11 +122,11 @@ func TestIntegration_CreateAndDeleteTopic(t *testing.T) {
 
 // ─────────────────────────── PUT FORMATS ───────────────────────────
 
-func TestIntegration_PutUTF8(t *testing.T) {
+func TestMockCLI_PutUTF8(t *testing.T) {
 	topic := "test-put-utf8"
-	runCmd(t, "create-topic", topic, "--profile", "test")
+	runCmd(t, "topic", "create", topic, "--profile", "test")
 	t.Cleanup(func() {
-		runCmd(t, "delete-topic", topic, "--profile", "test")
+		runCmd(t, "topic", "delete", topic, "--profile", "test")
 	})
 
 	path := filepath.Join(fixturesDir(), "put-utf8.txt")
@@ -144,11 +146,11 @@ func TestIntegration_PutUTF8(t *testing.T) {
 	}
 }
 
-func TestIntegration_PutBase64(t *testing.T) {
+func TestMockCLI_PutBase64(t *testing.T) {
 	topic := "test-put-base64"
-	runCmd(t, "create-topic", topic, "--profile", "test")
+	runCmd(t, "topic", "create", topic, "--profile", "test")
 	t.Cleanup(func() {
-		runCmd(t, "delete-topic", topic, "--profile", "test")
+		runCmd(t, "topic", "delete", topic, "--profile", "test")
 	})
 
 	path := filepath.Join(fixturesDir(), "put-base64.txt")
@@ -168,11 +170,11 @@ func TestIntegration_PutBase64(t *testing.T) {
 	}
 }
 
-func TestIntegration_PutRecordJSON(t *testing.T) {
+func TestMockCLI_PutRecordJSON(t *testing.T) {
 	topic := "test-put-record-json"
-	runCmd(t, "create-topic", topic, "--profile", "test")
+	runCmd(t, "topic", "create", topic, "--profile", "test")
 	t.Cleanup(func() {
-		runCmd(t, "delete-topic", topic, "--profile", "test")
+		runCmd(t, "topic", "delete", topic, "--profile", "test")
 	})
 
 	path := filepath.Join(fixturesDir(), "put-record-json.txt")
@@ -193,7 +195,7 @@ func TestIntegration_PutRecordJSON(t *testing.T) {
 
 // ─────────────────────────── GET WITH INDEX ───────────────────────────
 
-func TestIntegration_GetIndex(t *testing.T) {
+func TestMockCLI_GetIndex(t *testing.T) {
 	topic := "test-get-index"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
@@ -229,7 +231,7 @@ func TestIntegration_GetIndex(t *testing.T) {
 
 // ─────────────────────────── GET WITH OFFSETS ───────────────────────────
 
-func TestIntegration_GetFromOffsetToOffset(t *testing.T) {
+func TestMockCLI_GetFromOffsetToOffset(t *testing.T) {
 	topic := "test-get-offsets"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
@@ -254,7 +256,7 @@ func TestIntegration_GetFromOffsetToOffset(t *testing.T) {
 	}
 }
 
-func TestIntegration_GetUnixTimestamp(t *testing.T) {
+func TestMockCLI_GetUnixTimestamp(t *testing.T) {
 	topic := "test-get-unix"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
@@ -278,7 +280,7 @@ func TestIntegration_GetUnixTimestamp(t *testing.T) {
 
 // ─────────────────────────── GET WITH ALIAS ───────────────────────────
 
-func TestIntegration_GetAlias(t *testing.T) {
+func TestMockCLI_GetAlias(t *testing.T) {
 	topic := "test-get-alias"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
