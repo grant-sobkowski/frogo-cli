@@ -39,5 +39,6 @@ frogo get hello-world --from index/-3 --to END --profile mockserver
 ## Acknowledgements
 
 - [franz-go](https://github.com/twmb/franz-go)
+- [Redpanda](https://github.com/redpanda-data/redpanda)
 - [README Template](https://github.com/othneildrew/Best-README-Template/blob/main/README.md)
 - [Conduktor docker compose templates](https://github.com/conduktor/kafka-stack-docker-compose)
