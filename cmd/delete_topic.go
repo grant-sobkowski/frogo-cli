@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/twmb/franz-go/pkg/kadm"
 )
@@ -46,6 +47,6 @@ func runDeleteTopic(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to delete topic: %w", err)
 	}
 
-	fmt.Printf("deleted topic %q\n", topic)
+	logger.L.Infof("deleted topic %q", topic)
 	return nil
 }

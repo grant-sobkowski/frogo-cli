@@ -55,3 +55,4 @@ systemctl --user start podman.socket
 # A specific testcontainer suite
 go test ./integration/testcontainer/simple/... -tags integration
 ```
+

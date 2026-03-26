@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/grant-sobkowski/frogo-cli/internal/config"
+	"github.com/grant-sobkowski/frogo-cli/internal/logger"
 	"github.com/spf13/cobra"
 	"github.com/twmb/franz-go/pkg/kadm"
 )
@@ -52,6 +53,6 @@ func runCreateTopic(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create topic: %w", resp.Err)
 	}
 
-	fmt.Printf("created topic %q with %d partitions\n", topic, partitions)
+	logger.L.Infof("created topic %q with %d partitions", topic, partitions)
 	return nil
 }
