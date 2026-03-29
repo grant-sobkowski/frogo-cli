@@ -7,6 +7,17 @@
 [x] Add support for --text "my message" frogo put
 [x] Add timing stats on ending for frogo get
 [x] Test support for SASL PLAIN Clusters
+[x] Add count/<n> support
+
+[ ] Create generic render table bubble tea
+    [ ] Add support for displaying general table stats above / below table
+    [ ] Add support for selecting table element to show 'detail' table
+
+Use table for
+- Displaying topics -> detail view goes to topic description
+- Displaying topic offsets -> by hour / day
+- Displaying topic messages
+
 
 
 [ ] Adhoc MSK Auth test

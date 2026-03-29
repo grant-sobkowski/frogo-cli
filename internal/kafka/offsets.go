@@ -116,6 +116,24 @@ func OnRecordIndex(idx *IndexOffset) OnRecordHook {
 	}
 }
 
+//  ──────────────────────────── COUNT OFFSET ────────────────────────────
+
+type CountOffset struct {
+	N int64
+}
+
+func OnRecordCount(c *CountOffset) OnRecordHook {
+	var seen int64
+	return func(record kgo.Record, state GetState) (bool, error) {
+		if seen >= c.N {
+			return true, nil
+		}
+		OutputRecord(&record)
+		seen++
+		return seen >= c.N, nil
+	}
+}
+
 //  ──────────────────────────── ALIAS OFFSETS ────────────────────────────
 
 func OnStartAliasStart() OnStartHook {

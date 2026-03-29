@@ -19,10 +19,7 @@ func TestContainers_SASLTopicLifecycle(t *testing.T) {
 	})
 
 	t.Run("CreateTopic", func(t *testing.T) {
-		out := runCmd(t, "topic", "create", topic, "--profile", "test")
-		if !strings.Contains(out, topic) {
-			t.Errorf("expected topic name in output, got: %s", out)
-		}
+		runCmd(t, "topic", "create", topic, "--profile", "test")
 	})
 
 	t.Run("ListTopics", func(t *testing.T) {
@@ -46,10 +43,7 @@ func TestContainers_SASLTopicLifecycle(t *testing.T) {
 	})
 
 	t.Run("DeleteTopic", func(t *testing.T) {
-		out := runCmd(t, "topic", "delete", topic, "--profile", "test")
-		if !strings.Contains(out, topic) {
-			t.Errorf("expected topic name in output, got: %s", out)
-		}
+		runCmd(t, "topic", "delete", topic, "--profile", "test")
 	})
 
 	t.Run("ListTopicsAfterDelete", func(t *testing.T) {

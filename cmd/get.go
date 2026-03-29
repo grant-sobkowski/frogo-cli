@@ -42,7 +42,8 @@ Supported types for --to:
   index/<n>         relative index from end
   unix/<ts>         stop at this unix timestamp
   iso/<rfc3339>     stop at this ISO timestamp
-  date/<yy:mm:dd>   calendar date; resolves to end of day in --tz`,
+  date/<yy:mm:dd>   calendar date; resolves to end of day in --tz
+  count/<n>         stop after consuming n messages`,
 	Example: `  # Fetch the last 10 messages
   frogo get my-topic --from index/-10 --to alias/END
 
@@ -225,6 +226,12 @@ func parseToArg(to string) (kafka.OnRecordHook, error) {
 			return nil, fmt.Errorf("invalid --to: invalid index value %q: %w", value, err)
 		}
 		return kafka.OnRecordIndex(&kafka.IndexOffset{Index: v}), nil
+	case "count":
+		n, err := strconv.ParseInt(value, 10, 64)
+		if err != nil || n <= 0 {
+			return nil, fmt.Errorf("invalid --to: count value must be a positive integer, got %q", value)
+		}
+		return kafka.OnRecordCount(&kafka.CountOffset{N: n}), nil
 	case "alias":
 		switch value {
 		case "END":
@@ -235,7 +242,7 @@ func parseToArg(to string) (kafka.OnRecordHook, error) {
 			return nil, fmt.Errorf("unsupported --to alias %q (supported: END, FUTURE)", value)
 		}
 	default:
-		return nil, fmt.Errorf("unsupported to type %q (supported: offset, unix, iso, date, index, alias)", typ)
+		return nil, fmt.Errorf("unsupported to type %q (supported: offset, unix, iso, date, index, alias, count)", typ)
 	}
 }
 
