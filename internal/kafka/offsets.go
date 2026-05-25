@@ -9,7 +9,7 @@ import (
 
 // OutputRecord prints a record to stdout.
 func OutputRecord(r *kgo.Record) {
-	fmt.Printf("%d %s\n", r.Offset, string(r.Value))
+	fmt.Printf("%d,%s\n", r.Offset, string(r.Value))
 }
 
 // onStartHook is called once before consuming begins.
