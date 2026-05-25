@@ -92,6 +92,8 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 		}
 
 		var hookErr error
+
+		// Iterate through records returned by franz-go client using EachRecord
 		fetches.EachRecord(func(r *kgo.Record) {
 			state.lastProcessed[r.Partition] = *r
 			if hookErr != nil {

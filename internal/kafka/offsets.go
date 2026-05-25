@@ -1,15 +1,23 @@
 package kafka
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-// OutputRecord prints a record to stdout.
+type StdoutRecord struct {
+	Partition int32  `json:"partition"`
+	Offset    int64  `json:"offset"`
+	Value     string `json:"value"`
+}
+
+// OutputRecord prints a record to stdout as JSON.
 func OutputRecord(r *kgo.Record) {
-	fmt.Printf("%d,%s\n", r.Offset, string(r.Value))
+	b, _ := json.Marshal(StdoutRecord{r.Partition, r.Offset, string(r.Value)})
+	fmt.Println(string(b))
 }
 
 // onStartHook is called once before consuming begins.
