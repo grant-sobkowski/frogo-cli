@@ -53,36 +53,54 @@ func TestMain(m *testing.M) {
 }
 
 // runCmd executes a frogo CLI command and returns captured stdout.
-func runCmd(t *testing.T, args ...string) string {
+func runCmd(t *testing.T, args ...string) (string, string) {
 	t.Helper()
 
 	// Capture os.Stdout since commands use fmt.Printf directly
 	oldStdout := os.Stdout
+	oldStderr := os.Stderr
+
 	r, w, err := os.Pipe()
 	if err != nil {
 		t.Fatalf("failed to create pipe: %v", err)
 	}
 	os.Stdout = w
 
+	r2, w2, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("failed to create pipe: %v", err)
+	}
+	os.Stderr = w2
+
 	root := cmd.RootCmd()
 	root.SetArgs(args)
 	root.SetOut(w)
-	root.SetErr(io.Discard)
+	root.SetErr(w2)
 
 	execErr := root.Execute()
 
 	w.Close()
+	w2.Close()
+
 	os.Stdout = oldStdout
+	os.Stderr = oldStderr
 
 	var buf bytes.Buffer
+	var buf2 bytes.Buffer
+
+	// Capture stdout into a variable
 	io.Copy(&buf, r)
 	r.Close()
+
+	// Capture stderr into a variable
+	io.Copy(&buf2, r2)
+	r2.Close()
 
 	if execErr != nil {
 		t.Fatalf("command %v failed: %v\noutput: %s", args, execErr, buf.String())
 	}
 
-	return buf.String()
+	return buf.String(), buf2.String()
 }
 
 func fixturesDir() string {
@@ -109,14 +127,15 @@ func setupFixtureTopic(t *testing.T, topic string, fixtureFile string, format st
 func TestMockCLI_CreateAndDeleteTopic(t *testing.T) {
 	topic := "test-create-delete"
 
-	out := runCmd(t, "topic", "create", topic, "--profile", "test")
-	if !strings.Contains(out, topic) {
-		t.Errorf("create-topic output should mention topic name, got: %s", out)
+	_, stdErr := runCmd(t, "topic", "create", topic, "--profile", "test")
+
+	if !strings.Contains(stdErr, topic) {
+		t.Errorf("create-topic output should mention topic name, got: %s", stdErr)
 	}
 
-	out = runCmd(t, "topic", "delete", topic, "--profile", "test")
-	if !strings.Contains(out, topic) {
-		t.Errorf("delete-topic output should mention topic name, got: %s", out)
+	_, stdErr = runCmd(t, "topic", "delete", topic, "--profile", "test")
+	if !strings.Contains(stdErr, topic) {
+		t.Errorf("delete-topic output should mention topic name, got: %s", stdErr)
 	}
 }
 
@@ -133,7 +152,7 @@ func TestMockCLI_PutUTF8(t *testing.T) {
 	runCmd(t, "put", topic, "--file", path, "--format", "utf8", "--profile", "test")
 
 	// --to well past end; high watermark check stops consumption after all 5 messages
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
 		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
@@ -156,7 +175,7 @@ func TestMockCLI_PutBase64(t *testing.T) {
 	path := filepath.Join(fixturesDir(), "put-base64.txt")
 	runCmd(t, "put", topic, "--file", path, "--format", "base64", "--profile", "test")
 
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
 	// base64 decoded values
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
@@ -180,7 +199,7 @@ func TestMockCLI_PutRecordJSON(t *testing.T) {
 	path := filepath.Join(fixturesDir(), "put-record-json.txt")
 	runCmd(t, "put", topic, "--file", path, "--format", "record-json", "--profile", "test")
 
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "offset/0", "--to", "offset/99", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
 		t.Fatalf("expected 5 lines, got %d: %s", len(lines), out)
@@ -200,7 +219,7 @@ func TestMockCLI_GetIndex(t *testing.T) {
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
 	// index/0 to index/-2: should get first 4 messages (offsets 0-3), stopping before the last
-	out := runCmd(t, "get", topic, "--from", "index/0", "--to", "index/-2", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "index/0", "--to", "index/-2", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 4 {
 		t.Fatalf("expected 4 lines for index/0..index/-2, got %d: %s", len(lines), out)
@@ -213,7 +232,7 @@ func TestMockCLI_GetIndex(t *testing.T) {
 	}
 
 	// index/-3 to index/-1: should get last 3 messages (offsets 2-4)
-	out = runCmd(t, "get", topic, "--from", "index/-3", "--to", "index/-1", "--profile", "test")
+	out, _ = runCmd(t, "get", topic, "--from", "index/-3", "--to", "index/-1", "--profile", "test")
 	lines = strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 3 {
 		t.Fatalf("expected 3 lines for index/-3..index/-1, got %d: %s", len(lines), out)
@@ -236,7 +255,7 @@ func TestMockCLI_GetFromOffsetToOffset(t *testing.T) {
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
 	// --to well past end; high watermark stops consumption after offsets 1-4
-	out := runCmd(t, "get", topic, "--from", "offset/1", "--to", "offset/99", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "offset/1", "--to", "offset/99", "--profile", "test")
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 4 {
@@ -263,7 +282,7 @@ func TestMockCLI_GetUnixTimestamp(t *testing.T) {
 	// Use offset for --from (kfake may not support AfterMilli seeking),
 	// and a future unix timestamp for --to so all records are before the cutoff
 	future := strconv.FormatInt(time.Now().Add(1*time.Minute).Unix(), 10)
-	out := runCmd(t, "get", topic, "--from", "offset/0", "--to", "unix/"+future, "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "offset/0", "--to", "unix/"+future, "--profile", "test")
 
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
@@ -284,7 +303,7 @@ func TestMockCLI_GetAlias(t *testing.T) {
 	topic := "test-get-alias"
 	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
 
-	out := runCmd(t, "get", topic, "--from", "START", "--to", "END", "--profile", "test")
+	out, _ := runCmd(t, "get", topic, "--from", "START", "--to", "END", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")
 	if len(lines) != 5 {
 		t.Fatalf("expected 5 lines for alias/START..alias/END, got %d: %s", len(lines), out)
