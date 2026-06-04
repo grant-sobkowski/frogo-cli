@@ -9,16 +9,12 @@
 [x] Test support for SASL PLAIN Clusters
 [x] Add count/<n> support
 
-[ ] Create generic render table bubble tea
-    [ ] Add support for displaying general table stats above / below table
-    [ ] Add support for selecting table element to show 'detail' table
-
-Use table for
-- Displaying topics -> detail view goes to topic description
-- Displaying topic offsets -> by hour / day
-- Displaying topic messages
-
-
+[ ] Add frogo demo command to create example topics
+  [ ] Determine current structure of integration testing logic
+    [x] Fix issues with Lsp Config (deprecated mason-lspconfig setup)
+[ ] Build out README.md
+[ ] Add examples/ folder
+  [ ] Get counts of records by day
 
 [ ] Adhoc MSK Auth test
 
@@ -26,9 +22,9 @@ Use table for
 
 [x] Add support for configuring profile with FROGO_PROFILE 
 
-[ ] Missing profile: improve error syntax
-    [ ] Track time of last_modified for profiles
-    [ ] Add suggestion to use recently modified profiles
+[x] Missing profile: improve error syntax
+    [x] Track time of last_modified for profiles
+    [x] Add suggestion to use recently modified profiles
 
 [x] Organize commands by object
     get, put

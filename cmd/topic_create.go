@@ -31,8 +31,12 @@ func init() {
 }
 
 func runCreateTopic(cmd *cobra.Command, args []string) error {
-	topic := args[0]
+	name := args[0]
 
+	return createTopic(name, partitions)
+}
+
+func createTopic(name string, ptns int32) error {
 	cl, err := config.Client(profile)
 	if err != nil {
 		return err
@@ -45,7 +49,7 @@ func runCreateTopic(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	resp, err := adminClient.CreateTopic(ctx, partitions, -1, nil, topic)
+	resp, err := adminClient.CreateTopic(ctx, ptns, -1, nil, name)
 	if err != nil {
 		return fmt.Errorf("failed to create topic: %w", err)
 	}
@@ -53,6 +57,6 @@ func runCreateTopic(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to create topic: %w", resp.Err)
 	}
 
-	logger.L.Infof("created topic %q with %d partitions", topic, partitions)
+	logger.L.Infof("created topic %q with %d partitions", name, ptns)
 	return nil
 }

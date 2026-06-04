@@ -69,6 +69,8 @@ func runPut(cmd *cobra.Command, args []string) error {
 	topic := args[0]
 
 	var reader io.Reader
+
+	// Get reader object from either --text or --file
 	if text != "" {
 		reader = strings.NewReader(text)
 	} else {
@@ -80,7 +82,40 @@ func runPut(cmd *cobra.Command, args []string) error {
 		reader = file
 	}
 
+	start := time.Now()
+	recordsProduced, err := putRecordsWithReader(reader, topic, format)
+	if err != nil {
+		return err
+	}
+
+	logger.L.Infof("%d messages produced in %.2fs", recordsProduced, time.Since(start).Seconds())
+	return nil
+}
+
+/*
+
+utf8 File Format
+---
+this is my record
+this is another record
+
+base64 File Format
+---
+dGhpcyBpcyBhIHJlY29yZAo=
+dGhpcyBpcyBhIGFub3RoZXIgcmVjb3JkCg==
+
+record-json File Format
+---
+{"key": "record1-key", "value": "this is my record"}
+{"key": "record2-key", "value": "this is another record"}
+
+*/
+
+// Parses reader records and puts them in topic. CR Used as record delimiter
+// Returns number of produced records
+func putRecordsWithReader(reader io.Reader, topic string, format string) (int, error) {
 	var records []*kgo.Record
+
 	var err error
 	switch format {
 	case "utf8":
@@ -89,28 +124,26 @@ func runPut(cmd *cobra.Command, args []string) error {
 		records, err = parseBase64Records(reader, topic)
 	case "record-json":
 		records, err = parseRecordJSONRecords(reader, topic)
+	default:
+		return -1, fmt.Errorf("Unsupported format: %v", format)
 	}
 	if err != nil {
-		return err
+		return -1, fmt.Errorf("failed to parse records using %v format; %w", format, err)
 	}
+	logger.L.Infof("parsed %v records from reader, format: %v", len(records), format)
 
 	cl, err := config.Client(profile)
 	if err != nil {
-		return err
+		return -1, err
 	}
 	defer cl.Close()
 
-	start := time.Now()
 	err = kafka.Put(cl, topic, records)
-	if err == nil {
-		logger.L.Infof("%d messages produced in %.2fs", len(records), time.Since(start).Seconds())
+	if err != nil {
+		return -1, err
 	}
-	return err
-}
 
-type recordJSON struct {
-	Key   json.RawMessage `json:"key"`
-	Value json.RawMessage `json:"value"`
+	return len(records), err
 }
 
 // rawToBytes resolves a json.RawMessage to bytes.
@@ -127,6 +160,11 @@ func rawToBytes(raw json.RawMessage) ([]byte, error) {
 		return []byte(s), nil
 	}
 	return []byte(raw), nil
+}
+
+type recordJSON struct {
+	Key   json.RawMessage `json:"key"`
+	Value json.RawMessage `json:"value"`
 }
 
 func parseRecordJSONRecords(reader io.Reader, topic string) ([]*kgo.Record, error) {

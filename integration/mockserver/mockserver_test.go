@@ -107,8 +107,7 @@ func fixturesDir() string {
 	return filepath.Join("fixtures")
 }
 
-// setupFixtureTopic creates a topic, populates it from a fixture file, and
-// registers cleanup to delete the topic.
+// setupFixtureTopic runs `frogo topic create` and `frogo put` using a fixture file
 func setupFixtureTopic(t *testing.T, topic string, fixtureFile string, format string) {
 	t.Helper()
 
