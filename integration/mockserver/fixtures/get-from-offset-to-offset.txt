@@ -1,5 +1,0 @@
-msg-zero
-msg-one
-msg-two
-msg-three
-msg-four

@@ -107,17 +107,14 @@ func fixturesDir() string {
 	return filepath.Join("fixtures")
 }
 
-// setupFixtureTopic runs `frogo topic create` and `frogo put` using a fixture file
-func setupFixtureTopic(t *testing.T, topic string, fixtureFile string, format string) {
+// setupDemoTopic runs `frogo topic demo`
+func setupDemoTopic(t *testing.T, scenario string) {
 	t.Helper()
 
-	runCmd(t, "topic", "create", topic, "--profile", "test")
-
-	path := filepath.Join(fixturesDir(), fixtureFile)
-	runCmd(t, "put", topic, "--file", path, "--format", format, "--profile", "test")
+	runCmd(t, "topic", "demo", scenario, "--profile", "test")
 
 	t.Cleanup(func() {
-		runCmd(t, "topic", "delete", topic, "--profile", "test")
+		runCmd(t, "topic", "demo-cleanup", "--profile", "test")
 	})
 }
 
@@ -214,8 +211,8 @@ func TestMockCLI_PutRecordJSON(t *testing.T) {
 // ─────────────────────────── GET WITH INDEX ───────────────────────────
 
 func TestMockCLI_GetIndex(t *testing.T) {
-	topic := "test-get-index"
-	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+	topic := "frdemo-basic-incremental"
+	setupDemoTopic(t, "basic-incremental")
 
 	// index/0 to index/-2: should get first 4 messages (offsets 0-3), stopping before the last
 	out, _ := runCmd(t, "get", topic, "--from", "index/0", "--to", "index/-2", "--profile", "test")
@@ -250,8 +247,8 @@ func TestMockCLI_GetIndex(t *testing.T) {
 // ─────────────────────────── GET WITH OFFSETS ───────────────────────────
 
 func TestMockCLI_GetFromOffsetToOffset(t *testing.T) {
-	topic := "test-get-offsets"
-	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+	topic := "frdemo-basic-incremental"
+	setupDemoTopic(t, "basic-incremental")
 
 	// --to well past end; high watermark stops consumption after offsets 1-4
 	out, _ := runCmd(t, "get", topic, "--from", "offset/1", "--to", "offset/99", "--profile", "test")
@@ -275,8 +272,8 @@ func TestMockCLI_GetFromOffsetToOffset(t *testing.T) {
 }
 
 func TestMockCLI_GetUnixTimestamp(t *testing.T) {
-	topic := "test-get-unix"
-	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+	topic := "frdemo-basic-incremental"
+	setupDemoTopic(t, "basic-incremental")
 
 	// Use offset for --from (kfake may not support AfterMilli seeking),
 	// and a future unix timestamp for --to so all records are before the cutoff
@@ -299,8 +296,8 @@ func TestMockCLI_GetUnixTimestamp(t *testing.T) {
 // ─────────────────────────── GET WITH ALIAS ───────────────────────────
 
 func TestMockCLI_GetAlias(t *testing.T) {
-	topic := "test-get-alias"
-	setupFixtureTopic(t, topic, "get-from-offset-to-offset.txt", "utf8")
+	topic := "frdemo-basic-incremental"
+	setupDemoTopic(t, "basic-incremental")
 
 	out, _ := runCmd(t, "get", topic, "--from", "START", "--to", "END", "--profile", "test")
 	lines := strings.Split(strings.TrimSpace(out), "\n")

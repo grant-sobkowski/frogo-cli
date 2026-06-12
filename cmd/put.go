@@ -82,13 +82,11 @@ func runPut(cmd *cobra.Command, args []string) error {
 		reader = file
 	}
 
-	start := time.Now()
-	recordsProduced, err := putRecordsWithReader(reader, topic, format)
+	err := putRecordsWithReader(reader, topic, format)
 	if err != nil {
 		return err
 	}
 
-	logger.L.Infof("%d messages produced in %.2fs", recordsProduced, time.Since(start).Seconds())
 	return nil
 }
 
@@ -112,9 +110,10 @@ record-json File Format
 */
 
 // Parses reader records and puts them in topic. CR Used as record delimiter
-// Returns number of produced records
-func putRecordsWithReader(reader io.Reader, topic string, format string) (int, error) {
+func putRecordsWithReader(reader io.Reader, topic string, format string) error {
 	var records []*kgo.Record
+
+	start := time.Now()
 
 	var err error
 	switch format {
@@ -125,25 +124,27 @@ func putRecordsWithReader(reader io.Reader, topic string, format string) (int, e
 	case "record-json":
 		records, err = parseRecordJSONRecords(reader, topic)
 	default:
-		return -1, fmt.Errorf("Unsupported format: %v", format)
+		fmt.Errorf("Unsupported format: %v", format)
 	}
 	if err != nil {
-		return -1, fmt.Errorf("failed to parse records using %v format; %w", format, err)
+		fmt.Errorf("failed to parse records using %v format; %w", format, err)
+		return err
 	}
 	logger.L.Infof("parsed %v records from reader, format: %v", len(records), format)
 
 	cl, err := config.Client(profile)
 	if err != nil {
-		return -1, err
+		return err
 	}
 	defer cl.Close()
 
 	err = kafka.Put(cl, topic, records)
 	if err != nil {
-		return -1, err
+		return err
 	}
 
-	return len(records), err
+	logger.L.Infof("%v messages produced in %.2fs", len(records), time.Since(start).Seconds())
+	return nil
 }
 
 // rawToBytes resolves a json.RawMessage to bytes.
