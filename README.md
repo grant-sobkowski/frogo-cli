@@ -15,9 +15,14 @@ Even to just get started with kafka, you have to worry about:
 
 Frogo is an effort to make Kafka development more hackable.
 
-## Getting Started
+## Installation
 
-TODO: Steps to download binary from github
+| Platform | Command |
+|----------|---------|
+| Linux x86_64 | `curl -fL https://github.com/grant-sobkowski/frogo-cli/releases/latest/download/frogo-linux-amd64 -o frogo && chmod +x frogo && sudo install frogo /usr/local/bin/` |
+| Linux ARM64 | `curl -fL https://github.com/grant-sobkowski/frogo-cli/releases/latest/download/frogo-linux-arm64 -o frogo && chmod +x frogo && sudo install frogo /usr/local/bin/` |
+| macOS Intel | `curl -fL https://github.com/grant-sobkowski/frogo-cli/releases/latest/download/frogo-darwin-amd64 -o frogo && chmod +x frogo && sudo install frogo /usr/local/bin/` |
+| macOS Apple Silicon | `curl -fL https://github.com/grant-sobkowski/frogo-cli/releases/latest/download/frogo-darwin-arm64 -o frogo && chmod +x frogo && sudo install frogo /usr/local/bin/` |
 
 ## Usage
 
