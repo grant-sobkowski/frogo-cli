@@ -81,31 +81,37 @@ func TestOnRecordStrict(t *testing.T) {
 		name         string
 		stopOffset   int64
 		recordOffset int64
-		wantStop     bool
+		wantAction   RecordAction
 	}{
 		{
 			name:         "record before stop offset",
 			stopOffset:   10,
 			recordOffset: 5,
-			wantStop:     false,
+			wantAction:   OutputAndContinue,
+		},
+		{
+			name:         "record just before stop offset",
+			stopOffset:   10,
+			recordOffset: 9,
+			wantAction:   OutputAndStop,
 		},
 		{
 			name:         "record at stop offset",
 			stopOffset:   10,
 			recordOffset: 10,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "record past stop offset",
 			stopOffset:   10,
 			recordOffset: 15,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "zero stop offset with zero record",
 			stopOffset:   0,
 			recordOffset: 0,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 	}
 
@@ -117,12 +123,12 @@ func TestOnRecordStrict(t *testing.T) {
 			record := kgo.Record{Offset: tt.recordOffset}
 
 			hook := OnRecordStrict(abs)
-			gotStop, err := hook(record, state)
+			gotAction, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if gotStop != tt.wantStop {
-				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
+			if gotAction != tt.wantAction {
+				t.Errorf("action = %v, want %v", gotAction, tt.wantAction)
 			}
 		})
 	}
@@ -242,66 +248,66 @@ func TestOnRecordIndex(t *testing.T) {
 		index        int64
 		recordOffset int64
 		hwm          int64 // high watermark offset (only used for negative indices)
-		wantStop     bool
+		wantAction   RecordAction
 	}{
 		{
 			name:         "positive index: record before",
 			index:        5,
 			recordOffset: 3,
-			wantStop:     false,
+			wantAction:   OutputAndContinue,
 		},
 		{
 			name:         "positive index: record at index",
 			index:        5,
 			recordOffset: 5,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "positive index: record past index",
 			index:        5,
 			recordOffset: 7,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "zero index: record at zero",
 			index:        0,
 			recordOffset: 0,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "negative index -2: hwm=10, record at 8 (before target 9)",
 			index:        -2,
 			recordOffset: 8,
 			hwm:          10,
-			wantStop:     false,
+			wantAction:   OutputAndContinue,
 		},
 		{
 			name:         "negative index -2: hwm=10, record at 9 (at target)",
 			index:        -2,
 			recordOffset: 9,
 			hwm:          10,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 		{
 			name:         "negative index -1: hwm=10, record at 9 (target=10, never stops)",
 			index:        -1,
 			recordOffset: 9,
 			hwm:          10,
-			wantStop:     false,
+			wantAction:   OutputAndContinue,
 		},
 		{
 			name:         "negative index -3: hwm=5, record at 2 (before target 3)",
 			index:        -3,
 			recordOffset: 2,
 			hwm:          5,
-			wantStop:     false,
+			wantAction:   OutputAndContinue,
 		},
 		{
 			name:         "negative index -3: hwm=5, record at 3 (at target)",
 			index:        -3,
 			recordOffset: 3,
 			hwm:          5,
-			wantStop:     true,
+			wantAction:   Stop,
 		},
 	}
 
@@ -320,12 +326,12 @@ func TestOnRecordIndex(t *testing.T) {
 			record := kgo.Record{Offset: tt.recordOffset, Partition: 0}
 
 			hook := OnRecordIndex(idx)
-			gotStop, err := hook(record, state)
+			gotAction, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if gotStop != tt.wantStop {
-				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
+			if gotAction != tt.wantAction {
+				t.Errorf("action = %v, want %v", gotAction, tt.wantAction)
 			}
 		})
 	}
@@ -375,12 +381,12 @@ func TestOnRecordAliasEnd(t *testing.T) {
 	record := kgo.Record{Offset: 42}
 
 	hook := OnRecordAliasEnd()
-	stop, err := hook(record, state)
+	action, err := hook(record, state)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if stop {
-		t.Errorf("OnRecordAliasEnd() stop = true, want false")
+	if action != OutputAndContinue {
+		t.Errorf("OnRecordAliasEnd() action = %v, want OutputAndContinue", action)
 	}
 }
 
@@ -390,12 +396,12 @@ func TestOnRecordAliasFuture(t *testing.T) {
 	record := kgo.Record{Offset: 42}
 
 	hook := OnRecordAliasFuture()
-	stop, err := hook(record, state)
+	action, err := hook(record, state)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if stop {
-		t.Errorf("OnRecordAliasFuture() stop = true, want false")
+	if action != OutputAndContinue {
+		t.Errorf("OnRecordAliasFuture() action = %v, want OutputAndContinue", action)
 	}
 }
 
@@ -404,31 +410,31 @@ func TestOnRecordUnixMillis(t *testing.T) {
 		name       string
 		stopMillis int64
 		recordTime time.Time
-		wantStop   bool
+		wantAction RecordAction
 	}{
 		{
 			name:       "record before stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1699999999000),
-			wantStop:   false,
+			wantAction: OutputAndContinue,
 		},
 		{
 			name:       "record at stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1700000000000),
-			wantStop:   true,
+			wantAction: Stop,
 		},
 		{
 			name:       "record past stop time",
 			stopMillis: 1700000000000,
 			recordTime: time.UnixMilli(1700000001000),
-			wantStop:   true,
+			wantAction: Stop,
 		},
 		{
 			name:       "zero millis with zero record",
 			stopMillis: 0,
 			recordTime: time.UnixMilli(0),
-			wantStop:   true,
+			wantAction: Stop,
 		},
 	}
 
@@ -440,12 +446,12 @@ func TestOnRecordUnixMillis(t *testing.T) {
 			record := kgo.Record{Timestamp: tt.recordTime}
 
 			hook := OnRecordUnixMillis(um)
-			gotStop, err := hook(record, state)
+			gotAction, err := hook(record, state)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
-			if gotStop != tt.wantStop {
-				t.Errorf("stop = %v, want %v", gotStop, tt.wantStop)
+			if gotAction != tt.wantAction {
+				t.Errorf("action = %v, want %v", gotAction, tt.wantAction)
 			}
 		})
 	}

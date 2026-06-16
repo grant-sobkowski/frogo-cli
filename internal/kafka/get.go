@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -10,6 +11,29 @@ import (
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
+
+type StdoutRecord struct {
+	Partition int32  `json:"partition"`
+	Offset    int64  `json:"offset"`
+	Value     string `json:"value"`
+}
+
+// OutputRecord prints a record to stdout as JSON.
+func OutputRecord(r *kgo.Record, outputFormat string) {
+	if outputFormat == "offset-json" {
+		b, _ := json.Marshal(StdoutRecord{r.Partition, r.Offset, string(r.Value)})
+		fmt.Println(string(b))
+		return
+	}
+	if outputFormat == "plain" {
+		fmt.Println(string(r.Value))
+		return
+	}
+
+	// Error should be caught in the cli parsing steps, panic on unexpected format
+	err := fmt.Errorf("OutputRecord - recieved invalid outputFormat: %v", outputFormat)
+	panic(err)
+}
 
 // GetState holds information about the status of the topic consumer.
 type GetState struct {
@@ -23,7 +47,7 @@ type GetState struct {
 // stopOnHighWatermark, when set, will stop processing records when the offsets
 // of the last known high watermark have been reached. For infrequently updated topics
 // this prevents waiting for conditions that have already been met.
-func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHook, stopOnHighWatermark bool) ([]*kgo.Record, error) {
+func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHook, stopOnHighWatermark bool, outputFormat string) ([]*kgo.Record, error) {
 
 	var ctx context.Context
 	var cancel context.CancelFunc
@@ -104,12 +128,15 @@ func Get(cl *kgo.Client, topic string, onStart OnStartHook, onRecord OnRecordHoo
 				return
 			}
 			// call onRecord hook
-			stop, err := onRecord(*r, state)
+			action, err := onRecord(*r, state)
 			if err != nil {
 				hookErr = fmt.Errorf("onRecord hook failed: %w", err)
 				return
 			}
-			if stop {
+			if action == OutputAndStop || action == OutputAndContinue {
+				OutputRecord(r, outputFormat)
+			}
+			if action == Stop || action == OutputAndStop {
 				state.completedPartitions = append(state.completedPartitions, r.Partition)
 				return
 			}

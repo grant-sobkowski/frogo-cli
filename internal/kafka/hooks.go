@@ -1,34 +1,27 @@
 package kafka
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
 )
 
-type StdoutRecord struct {
-	Partition int32  `json:"partition"`
-	Offset    int64  `json:"offset"`
-	Value     string `json:"value"`
-}
-
-// OutputRecord prints a record to stdout as JSON.
-func OutputRecord(r *kgo.Record) {
-	b, _ := json.Marshal(StdoutRecord{r.Partition, r.Offset, string(r.Value)})
-	fmt.Println(string(b))
-}
-
-// onStartHook is called once before consuming begins.
+// OnStartHook is called once before consuming begins.
 // It receives the current GetState and returns partition offsets to consume from.
 // Returning nil offsets signals that no consumption is needed.
 type OnStartHook func(state GetState) (map[string]map[int32]kgo.Offset, error)
 
-// onRecordHook is called on each consumed record.
-// It returns (stop, error): stop marks the partition complete.
-// Hooks call state.OutputRecord to include a record in results.
-type OnRecordHook func(record kgo.Record, state GetState) (bool, error)
+// RecordAction is returned by OnRecordHook to control consumption flow.
+type RecordAction int
+
+const (
+	Stop              RecordAction = iota // discard record, mark partition complete
+	OutputAndStop                         // output record, mark partition complete
+	OutputAndContinue                     // output record, keep consuming
+)
+
+// OnRecordHook is called on each consumed record.
+// It returns a RecordAction directing whether to output the record and whether to stop.
+type OnRecordHook func(record kgo.Record, state GetState) (RecordAction, error)
 
 //  ──────────────────────────── STRICT OFFSET ────────────────────────────
 
@@ -44,18 +37,14 @@ func OnStartStrict(abs *StrictOffset) OnStartHook {
 }
 
 func OnRecordStrict(abs *StrictOffset) OnRecordHook {
-	return func(record kgo.Record, state GetState) (bool, error) {
-		// This record is outside our range, stop and don't output anything
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
 		if record.Offset >= abs.Offset {
-			return true, nil
+			return Stop, nil
 		}
-		// Record is last message in our range, output then stop
 		if record.Offset+1 == abs.Offset {
-			OutputRecord(&record)
-			return true, nil
+			return OutputAndStop, nil
 		}
-		OutputRecord(&record)
-		return false, nil
+		return OutputAndContinue, nil
 	}
 }
 
@@ -73,12 +62,11 @@ func OnStartUnixMillis(um *UnixMillisOffset) OnStartHook {
 }
 
 func OnRecordUnixMillis(um *UnixMillisOffset) OnRecordHook {
-	return func(record kgo.Record, state GetState) (bool, error) {
-		past := record.Timestamp.UnixMilli() >= um.Millis
-		if !past {
-			OutputRecord(&record)
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
+		if record.Timestamp.UnixMilli() >= um.Millis {
+			return Stop, nil
 		}
-		return past, nil
+		return OutputAndContinue, nil
 	}
 }
 
@@ -104,23 +92,22 @@ func OnStartIndex(idx *IndexOffset) OnStartHook {
 }
 
 func OnRecordIndex(idx *IndexOffset) OnRecordHook {
-	return func(record kgo.Record, state GetState) (bool, error) {
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
 		var stop bool
 		if idx.Index >= 0 {
 			stop = record.Offset >= idx.Index
 		} else {
 			hwm, ok := state.HighWatermarks[record.Partition]
 			if !ok {
-				OutputRecord(&record)
-				return false, nil
+				return OutputAndContinue, nil
 			}
 			target := hwm.Offset + idx.Index + 1
 			stop = record.Offset >= target
 		}
-		if !stop {
-			OutputRecord(&record)
+		if stop {
+			return Stop, nil
 		}
-		return stop, nil
+		return OutputAndContinue, nil
 	}
 }
 
@@ -132,13 +119,15 @@ type CountOffset struct {
 
 func OnRecordCount(c *CountOffset) OnRecordHook {
 	var seen int64
-	return func(record kgo.Record, state GetState) (bool, error) {
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
 		if seen >= c.N {
-			return true, nil
+			return Stop, nil
 		}
-		OutputRecord(&record)
 		seen++
-		return seen >= c.N, nil
+		if seen >= c.N {
+			return OutputAndStop, nil
+		}
+		return OutputAndContinue, nil
 	}
 }
 
@@ -157,22 +146,19 @@ func OnStartAliasEnd() OnStartHook {
 }
 
 func OnRecordAliasEnd() OnRecordHook {
-	return func(record kgo.Record, state GetState) (bool, error) {
-		OutputRecord(&record)
-		return false, nil
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
+		return OutputAndContinue, nil
 	}
 }
 
 func OnRecordAliasFuture() OnRecordHook {
-	return func(record kgo.Record, state GetState) (bool, error) {
-		OutputRecord(&record)
-		return false, nil
+	return func(record kgo.Record, state GetState) (RecordAction, error) {
+		return OutputAndContinue, nil
 	}
 }
 
 // partitionOffsets formats `at` offset as a map of partition offsets
 func partitionOffsets(td kadm.TopicDetail, at kgo.Offset) map[string]map[int32]kgo.Offset {
-
 	offsets := make(map[string]map[int32]kgo.Offset)
 	offsets[td.Topic] = make(map[int32]kgo.Offset)
 

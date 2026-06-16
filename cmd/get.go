@@ -19,6 +19,7 @@ var from string
 var to string
 var wait bool
 var tz string
+var outputFormat string
 
 var getCmd = &cobra.Command{
 	Use:   "get <topic>",
@@ -61,6 +62,7 @@ func init() {
 	getCmd.Flags().StringVar(&to, "to", "", "stop point in type/value format (e.g. offset/100)")
 	getCmd.Flags().BoolVar(&wait, "wait", false, "wait past high watermark for new messages instead of stopping at current end")
 	getCmd.Flags().StringVar(&tz, "tz", "UTC", "timezone for date type offsets (e.g. UTC, America/New_York)")
+	getCmd.Flags().StringVar(&outputFormat, "output", "offset-json", "output format")
 	getCmd.MarkFlagRequired("from")
 	getCmd.MarkFlagRequired("to")
 	rootCmd.AddCommand(getCmd)
@@ -94,6 +96,11 @@ func runGet(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	outputFormat, err := parseFormatArg(outputFormat)
+	if err != nil {
+		return err
+	}
+
 	cl, err := config.Client(profile)
 	if err != nil {
 		return err
@@ -102,15 +109,17 @@ func runGet(cmd *cobra.Command, args []string) error {
 
 	start := time.Now()
 	msgCount := 0
-	countingOnRecord := func(r kgo.Record, state kafka.GetState) (bool, error) {
-		stop, err := onRecord(r, state)
-		if err == nil {
+
+	// Create a wrapper over onRecord to track processed records
+	countingOnRecord := func(r kgo.Record, state kafka.GetState) (kafka.RecordAction, error) {
+		action, err := onRecord(r, state)
+		if err == nil && (action == kafka.OutputAndStop || action == kafka.OutputAndContinue) {
 			msgCount++
 		}
-		return stop, err
+		return action, err
 	}
 
-	_, err = kafka.Get(cl, topic, onStart, countingOnRecord, !wait)
+	_, err = kafka.Get(cl, topic, onStart, countingOnRecord, !wait, outputFormat)
 	if err == nil {
 		logger.L.Infof("consumed %d messages in %.2fs", msgCount, time.Since(start).Seconds())
 	}
@@ -246,6 +255,17 @@ func parseToArg(to string) (kafka.OnRecordHook, error) {
 	}
 }
 
+func parseFormatArg(outputFormat string) (string, error) {
+	switch outputFormat {
+	case "offset-json":
+		return "offset-json", nil
+	case "plain":
+		return "plain", nil
+	default:
+		return "", fmt.Errorf("unsupported format type %q (supported: basic-json, plain)", outputFormat)
+	}
+}
+
 // parseUnixToMillis parses a unix timestamp string as seconds or milliseconds.
 // Values ≤ 9999999999 (10 digits) are treated as seconds, otherwise milliseconds.
 func parseUnixToMillis(value string) (int64, error) {
@@ -275,4 +295,3 @@ func parseDateToMillis(value string, endOfDay bool) (int64, error) {
 	}
 	return t.UnixMilli(), nil
 }
-

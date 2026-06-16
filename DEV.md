@@ -9,14 +9,47 @@
 [x] Test support for SASL PLAIN Clusters
 [x] Add count/<n> support
 
-[ ] Add frogo demo command to create example topics
-  [ ] Determine current structure of integration testing logic
+[x] Add frogo demo command to create example topics
+    [x] Determine current structure of integration testing logic -> setupFixtureTopic is just wrapper around frogo topic create, frogo put
     [x] Fix issues with Lsp Config (deprecated mason-lspconfig setup)
+    [x] Change runCmd to capture stderr
+    [x] Add cobra command definition under cmd/topic_demo.go
+    [x] Create wrapper around create topic / put topic (either via commands or function calls)
+    [x] Add hello-world topic demo
+    
+[x] frogo demo
+    [x] Add basic scenarios
+       [x] basic-json
+       [x] 10k-pets-json
+    [x] Replace setupFixturetopic logic with frogo demo command
+        [x] from-offset-to-offset
+        [x] add frogo topic demo-cleanup
+    
+[ ] add --format 'simple', 'metadata' to frogo get
+    [x] Add flag
+    [x] Add var to get
+    [ ] Decide how to paramaterize OutputRecord function
+        [ ] Add to GetState
+        [ ] Pass GetState as field to OutputRecord
+    [ ] Implement simple, metadata output formats
+    
 [ ] Build out README.md
-[ ] Add examples/ folder
-  [ ] Get counts of records by day
+  - Introduction
+  - Configuring
+  - Getting messages
+  - Putting messages
+  - Running mockserver
+  - More info
 
-[ ] Adhoc MSK Auth test
+[ ] Add examples/ folder with python scripts
+  [ ] examples/basic/
+    [ ] grep
+    [ ] jq fields
+    [ ] count records by day
+    [ ] json-to-csv
+  [ ] examples/python/
+    [ ] infer-json-schema
+    [ ] records-by-day
 
 ## Defects / Tweaks
 
